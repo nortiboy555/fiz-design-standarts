@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
-const GEMINI_IMAGE_MODEL = "gemini-2.0-flash-exp-image-generation";
+const GEMINI_IMAGE_MODEL = "gemini-3-pro-image-preview";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 interface GeminiImage {
