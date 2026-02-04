@@ -87,6 +87,16 @@ export default function PreviewPage() {
   const [copy, setCopy] = useState({ headline: "", subhead: "", cta: "" });
   const [bgColor, setBgColor] = useState("#FFFFFF");
 
+  // Background Image Generation State
+  const [bgType, setBgType] = useState<"color" | "image">("color");
+  const [bgVariants, setBgVariants] = useState<ImageVariant[]>([]);
+  const [bgCurrentIndex, setBgCurrentIndex] = useState(0);
+  const [bgPrompt, setBgPrompt] = useState("");
+  const [bgVariantCount, setBgVariantCount] = useState("1");
+  const [isGeneratingBg, setIsGeneratingBg] = useState(false);
+  const [bgPopupImages, setBgPopupImages] = useState<string[]>([]);
+  const [showBgPopup, setShowBgPopup] = useState(false);
+
   // Gemini Image Generation State - supports multiple pictures
   const [sharedPictures, setSharedPictures] = useState<SharedPicture[]>([]);
   const [selectedPictureName, setSelectedPictureName] = useState<string>("");
@@ -281,8 +291,30 @@ export default function PreviewPage() {
 
     const scale = previewWidth / template.width;
 
-    ctx.fillStyle = bgColor || template.backgroundColor || "#FFFFFF";
-    ctx.fillRect(0, 0, previewWidth, spec.previewHeight);
+    // Background: image or color
+    if (bgType === "image" && bgVariants[bgCurrentIndex]?.dataUrl) {
+      try {
+        const bgImg = await loadImage(bgVariants[bgCurrentIndex].dataUrl);
+        // Draw background image to cover canvas (center crop)
+        const imgAspect = bgImg.width / bgImg.height;
+        const canvasAspect = previewWidth / spec.previewHeight;
+        let sx = 0, sy = 0, sw = bgImg.width, sh = bgImg.height;
+        if (imgAspect > canvasAspect) {
+          sw = bgImg.height * canvasAspect;
+          sx = (bgImg.width - sw) / 2;
+        } else {
+          sh = bgImg.width / canvasAspect;
+          sy = (bgImg.height - sh) / 2;
+        }
+        ctx.drawImage(bgImg, sx, sy, sw, sh, 0, 0, previewWidth, spec.previewHeight);
+      } catch (e) {
+        ctx.fillStyle = bgColor || template.backgroundColor || "#FFFFFF";
+        ctx.fillRect(0, 0, previewWidth, spec.previewHeight);
+      }
+    } else {
+      ctx.fillStyle = bgColor || template.backgroundColor || "#FFFFFF";
+      ctx.fillRect(0, 0, previewWidth, spec.previewHeight);
+    }
 
     const sortedNodes = [...template.nodes].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
 
@@ -350,11 +382,11 @@ export default function PreviewPage() {
         ctx.globalAlpha = 1;
       }
     }
-  }, [figmaTemplates, copy, bgColor, generatedImages, loadImage, wrapText]);
+  }, [figmaTemplates, copy, bgColor, bgType, bgVariants, bgCurrentIndex, generatedImages, loadImage, wrapText]);
 
   useEffect(() => {
     Object.keys(figmaTemplates).forEach((format) => renderCanvas(format));
-  }, [figmaTemplates, copy, bgColor, generatedImages, renderCanvas]);
+  }, [figmaTemplates, copy, bgColor, bgType, bgVariants, bgCurrentIndex, generatedImages, renderCanvas]);
 
   // Get current picture data
   const selectedPicture = sharedPictures.find((p) => p.name === selectedPictureName);
@@ -576,6 +608,92 @@ export default function PreviewPage() {
     }
   };
 
+  // Background Image Generation
+  const currentBgVariant = bgVariants[bgCurrentIndex];
+
+  const navigateBgCarousel = (direction: number) => {
+    const newIdx = bgCurrentIndex + direction;
+    if (newIdx >= 0 && newIdx < bgVariants.length) {
+      setBgCurrentIndex(newIdx);
+      const variant = bgVariants[newIdx];
+      setBgPrompt(variant.prompt || "");
+    }
+  };
+
+  const handleGenerateBgImages = async () => {
+    if (!bgPrompt.trim()) return;
+
+    setIsGeneratingBg(true);
+    setBgPopupImages([]);
+    setShowBgPopup(true);
+
+    // Generate square 1920x1920 that scales to any format
+    const size = 1920;
+
+    try {
+      const response = await fetch("http://localhost:3001/api/gemini/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: bgPrompt,
+          width: size,
+          height: size,
+          referenceImageUrl: null,
+          useReference: false,
+          count: parseInt(bgVariantCount),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.error || "Failed to generate");
+
+      if (data.success && data.images?.length > 0) {
+        const images = data.images.map((img: { mimeType: string; base64: string }) =>
+          `data:${img.mimeType};base64,${img.base64}`
+        );
+        setBgPopupImages(images);
+      } else {
+        throw new Error("No images generated");
+      }
+    } catch (error) {
+      console.error("Gemini BG error:", error);
+      setShowBgPopup(false);
+      alert(`Generation error: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setIsGeneratingBg(false);
+      setBgVariantCount("1");
+    }
+  };
+
+  const selectBgImage = async (dataUrl: string, index: number) => {
+    try {
+      // Upload to Vercel Blob
+      const blobUrl = await uploadToBlob(dataUrl, `bg-${Date.now()}.png`);
+
+      const genCount = bgVariants.length;
+      const newVariant: ImageVariant = {
+        type: "generated",
+        dataUrl: blobUrl,
+        label: `Gen ${genCount + 1}`,
+        prompt: bgPrompt,
+      };
+
+      setBgVariants((prev) => [...prev, newVariant]);
+      setBgCurrentIndex(bgVariants.length);
+      setShowBgPopup(false);
+
+      // Download
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `bg-variant-${index + 1}.png`;
+      a.click();
+    } catch (error) {
+      console.error("Upload error:", error);
+      alert(`Failed to save image: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  };
+
   const randomize = (field: "headline" | "subhead" | "cta") => {
     const data = field === "headline" ? headlines : field === "subhead" ? subheads : ctas;
     if (data.length > 0) {
@@ -605,8 +723,31 @@ export default function PreviewPage() {
     if (!ctx) return;
 
     const scale = (spec.width / template.width) * exportScale;
-    ctx.fillStyle = bgColor || "#FFFFFF";
-    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+    // Background: image or color
+    if (bgType === "image" && bgVariants[bgCurrentIndex]?.dataUrl) {
+      try {
+        const bgImg = await loadImage(bgVariants[bgCurrentIndex].dataUrl);
+        // Draw background image to cover canvas (center crop)
+        const imgAspect = bgImg.width / bgImg.height;
+        const canvasAspect = canvasWidth / canvasHeight;
+        let sx = 0, sy = 0, sw = bgImg.width, sh = bgImg.height;
+        if (imgAspect > canvasAspect) {
+          sw = bgImg.height * canvasAspect;
+          sx = (bgImg.width - sw) / 2;
+        } else {
+          sh = bgImg.width / canvasAspect;
+          sy = (bgImg.height - sh) / 2;
+        }
+        ctx.drawImage(bgImg, sx, sy, sw, sh, 0, 0, canvasWidth, canvasHeight);
+      } catch (e) {
+        ctx.fillStyle = bgColor || "#FFFFFF";
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+      }
+    } else {
+      ctx.fillStyle = bgColor || "#FFFFFF";
+      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+    }
 
     const sortedNodes = [...template.nodes].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
 
@@ -679,6 +820,11 @@ export default function PreviewPage() {
     setCurrentIndexPerPicture({});
     setGeneratedImages({});
     setPromptPerPicture({});
+    // Reset background
+    setBgType("color");
+    setBgVariants([]);
+    setBgCurrentIndex(0);
+    setBgPrompt("");
   };
 
   // Figma Logo component
@@ -775,13 +921,93 @@ export default function PreviewPage() {
               </TabsContent>
             </Tabs>
 
-            {/* Background Color */}
-            <div className="space-y-2 pt-4 border-t border-border/40">
-              <Label>Background Color</Label>
-              <div className="flex gap-2">
-                <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="w-10 h-9 rounded border border-input cursor-pointer" />
-                <Input value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="flex-1" />
+            {/* Background Color/Image */}
+            <div className="space-y-3 pt-4 border-t border-border/40">
+              <Label>Background</Label>
+
+              {/* Type Switcher */}
+              <div className="flex gap-1 bg-muted rounded-md p-0.5">
+                <button
+                  onClick={() => setBgType("color")}
+                  className={`flex-1 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                    bgType === "color" ? "bg-background shadow-sm" : "hover:bg-background/50"
+                  }`}
+                >
+                  Color
+                </button>
+                <button
+                  onClick={() => setBgType("image")}
+                  className={`flex-1 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                    bgType === "image" ? "bg-background shadow-sm" : "hover:bg-background/50"
+                  }`}
+                >
+                  Image
+                </button>
               </div>
+
+              {bgType === "color" ? (
+                <div className="flex gap-2">
+                  <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="w-10 h-9 rounded border border-input cursor-pointer" />
+                  <Input value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="flex-1" />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* Variants Carousel */}
+                  {bgVariants.length > 0 && (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" disabled={bgCurrentIndex === 0} onClick={() => navigateBgCarousel(-1)}>&lt;</Button>
+                        <div className="flex-1 h-20 rounded-lg border border-border/40 overflow-hidden bg-muted/30 flex items-center justify-center">
+                          {currentBgVariant?.dataUrl ? (
+                            <img src={currentBgVariant.dataUrl} alt={currentBgVariant.label} className="max-h-full max-w-full object-contain" />
+                          ) : (
+                            <span className="text-xs text-muted-foreground">No image</span>
+                          )}
+                        </div>
+                        <Button variant="outline" size="sm" disabled={bgCurrentIndex === bgVariants.length - 1} onClick={() => navigateBgCarousel(1)}>&gt;</Button>
+                      </div>
+
+                      {/* Carousel Indicator */}
+                      <div className="flex justify-center gap-1">
+                        {bgVariants.map((v, i) => (
+                          <button
+                            key={i}
+                            onClick={() => {
+                              setBgCurrentIndex(i);
+                              setBgPrompt(v.prompt || "");
+                            }}
+                            className={`w-2 h-2 rounded-full transition-colors ${i === bgCurrentIndex ? "bg-indigo-500" : "bg-emerald-500/50"}`}
+                          />
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Prompt */}
+                  <Textarea
+                    value={bgPrompt}
+                    onChange={(e) => setBgPrompt(e.target.value)}
+                    placeholder="Describe background to generate...&#10;&#10;Example: Abstract gradient purple and blue"
+                    rows={3}
+                    className="text-sm"
+                  />
+
+                  {/* Options */}
+                  <div className="flex items-center justify-end gap-2">
+                    <Label className="text-xs">Variants:</Label>
+                    <Select value={bgVariantCount} onValueChange={setBgVariantCount}>
+                      <SelectTrigger className="w-16 h-8"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {["1", "2", "3", "4"].map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Button onClick={handleGenerateBgImages} disabled={isGeneratingBg || !bgPrompt.trim()} variant="secondary" className="w-full">
+                    {isGeneratingBg ? "Generating..." : "Generate Background"}
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* Picture (Gemini AI) - показываем только если есть shared pictures */}
@@ -870,7 +1096,6 @@ export default function PreviewPage() {
                   ))}
                 </div>
 
-                <p className="text-xs text-center text-muted-foreground">{currentVariant?.label || "No variant"}</p>
 
                 {/* Prompt */}
                 <Textarea
@@ -982,6 +1207,29 @@ export default function PreviewPage() {
                 <div key={i} onClick={() => selectGeneratedImage(url, i)}
                   className="cursor-pointer rounded-lg overflow-hidden border-2 border-transparent hover:border-indigo-500 transition-colors">
                   <img src={url} alt={`Variant ${i + 1}`} className="w-full h-auto" />
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Generated Background Images Popup */}
+      <Dialog open={showBgPopup} onOpenChange={setShowBgPopup}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Select background (click to select and download)</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 mt-4">
+            {bgPopupImages.length === 0 ? (
+              <div className="col-span-2 flex items-center justify-center h-48">
+                <div className="animate-pulse text-muted-foreground">Generating backgrounds...</div>
+              </div>
+            ) : (
+              bgPopupImages.map((url, i) => (
+                <div key={i} onClick={() => selectBgImage(url, i)}
+                  className="cursor-pointer rounded-lg overflow-hidden border-2 border-transparent hover:border-indigo-500 transition-colors">
+                  <img src={url} alt={`Background ${i + 1}`} className="w-full h-auto" />
                 </div>
               ))
             )}
