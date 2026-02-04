@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-const CORRECT_PASSWORD = process.env.NEXT_PUBLIC_APP_PASSWORD || "";
 const AUTH_KEY = "fiz-auth";
 
 interface AuthGateProps {
@@ -16,21 +15,38 @@ export function AuthGate({ children }: AuthGateProps) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem(AUTH_KEY);
     setIsAuthenticated(stored === "true");
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === CORRECT_PASSWORD) {
-      localStorage.setItem(AUTH_KEY, "true");
-      setIsAuthenticated(true);
-      setError(false);
-    } else {
+    setIsLoading(true);
+    setError(false);
+
+    try {
+      const response = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        localStorage.setItem(AUTH_KEY, "true");
+        setIsAuthenticated(true);
+      } else {
+        setError(true);
+        setPassword("");
+      }
+    } catch {
       setError(true);
-      setPassword("");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -65,13 +81,14 @@ export function AuthGate({ children }: AuthGateProps) {
                 }}
                 placeholder="Password"
                 autoFocus
+                disabled={isLoading}
                 className={error ? "border-destructive" : ""}
               />
               {error && (
                 <p className="text-sm text-destructive">Incorrect password</p>
               )}
-              <Button type="submit" className="w-full">
-                Enter
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Checking..." : "Enter"}
               </Button>
             </form>
           </CardContent>
