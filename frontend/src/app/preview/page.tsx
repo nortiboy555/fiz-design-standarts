@@ -100,6 +100,7 @@ export default function PreviewPage() {
   const [showPopup, setShowPopup] = useState(false);
   const [popupImages, setPopupImages] = useState<string[]>([]);
   const [exportScale, setExportScale] = useState<1 | 2>(1);
+  const [isRemovingBg, setIsRemovingBg] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -139,6 +140,18 @@ export default function PreviewPage() {
     return shared;
   }, []);
 
+  // Upload image from URL to Vercel Blob
+  const uploadUrlToBlob = async (imageUrl: string, filename: string): Promise<string> => {
+    const response = await fetch("/api/upload-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: imageUrl, filename }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Upload failed");
+    return data.url;
+  };
+
   const handleFigmaImport = async () => {
     if (!figmaUrl.trim()) return;
     setIsImporting(true);
@@ -158,19 +171,42 @@ export default function PreviewPage() {
         }
       }
 
-      setFigmaTemplates(templates);
       const shared = findSharedPictures(templates);
       setSharedPictures(shared);
 
       // Initialize variants for ALL shared pictures
       if (shared.length > 0) {
+        setImportStatus("Uploading images to storage...");
+
         const newVariants: Record<string, ImageVariant[]> = {};
         const newIndexes: Record<string, number> = {};
         const newPrompts: Record<string, string> = {};
 
+        // Upload original images to Vercel Blob
         for (const pic of shared) {
           const firstNode = Object.values(pic.nodes)[0];
-          newVariants[pic.name] = [{ type: "original", dataUrl: firstNode?.imageUrl || null, label: "Original" }];
+          const originalUrl = firstNode?.imageUrl || null;
+          let blobUrl = originalUrl;
+
+          // Upload Figma image to Blob for reliable access
+          if (originalUrl) {
+            try {
+              blobUrl = await uploadUrlToBlob(originalUrl, `original-${pic.name}-${Date.now()}.png`);
+
+              // Update all nodes in templates with the blob URL
+              for (const template of Object.values(templates)) {
+                for (const node of template.nodes) {
+                  if (node.nodeType === "IMAGE" && node.nodeName.toLowerCase() === pic.name.toLowerCase()) {
+                    node.imageUrl = blobUrl;
+                  }
+                }
+              }
+            } catch (e) {
+              console.warn(`Failed to upload ${pic.name} to blob, using original URL`);
+            }
+          }
+
+          newVariants[pic.name] = [{ type: "original", dataUrl: blobUrl, label: "Original" }];
           newIndexes[pic.name] = 0;
           newPrompts[pic.name] = "";
         }
@@ -182,6 +218,8 @@ export default function PreviewPage() {
         setGeneratedImages({});
       }
 
+      // Set templates AFTER uploading images (with updated Blob URLs)
+      setFigmaTemplates(templates);
       setImportStatus(`Imported ${Object.keys(templates).length} templates, ${shared.length} shared picture(s): ${shared.map(p => p.name).join(", ")}`);
     } catch (error) {
       setImportStatus(`Error: ${error instanceof Error ? error.message : "Failed to import"}`);
@@ -201,8 +239,8 @@ export default function PreviewPage() {
   }, []);
 
   const wrapText = useCallback((ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] => {
-    // Double space = forced line break
-    const paragraphs = text.split("  ");
+    // \n = forced line break
+    const paragraphs = text.split("\\n");
     const allLines: string[] = [];
 
     for (const paragraph of paragraphs) {
@@ -299,8 +337,8 @@ export default function PreviewPage() {
         else if (node.textAlign === "right") { ctx.textAlign = "right"; textX = x + w; }
         else { ctx.textAlign = "left"; }
 
-        // Double space = forced line break (even if shouldWrap is false)
-        const forcedLines = textValue.split("  ").map((s) => s.trim()).filter(Boolean);
+        // \n = forced line break (even if shouldWrap is false)
+        const forcedLines = textValue.split("\\n").map((s) => s.trim()).filter(Boolean);
         const lines = node.shouldWrap === false ? forcedLines : wrapText(ctx, textValue, w);
         const totalTextHeight = lines.length * lineHeight;
 
@@ -406,36 +444,136 @@ export default function PreviewPage() {
     }
   };
 
+  // Convert base64 to File
+  const base64ToFile = (base64Data: string, filename: string): File => {
+    const arr = base64Data.split(",");
+    const mime = arr[0].match(/:(.*?);/)?.[1] || "image/png";
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) u8arr[n] = bstr.charCodeAt(n);
+    return new File([u8arr], filename, { type: mime });
+  };
+
+  // Upload image file to Vercel Blob and return URL
+  const uploadToBlob = async (base64Data: string, filename: string): Promise<string> => {
+    const file = base64ToFile(base64Data, filename);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("filename", filename);
+
+    const response = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Upload failed");
+    return data.url;
+  };
+
   // Select generated image from popup for selected picture
-  const selectGeneratedImage = (dataUrl: string, index: number) => {
+  const selectGeneratedImage = async (dataUrl: string, index: number) => {
     if (!selectedPictureName) return;
 
-    const currentPrompt = promptPerPicture[selectedPictureName] || "";
+    try {
+      // Upload to Vercel Blob
+      const blobUrl = await uploadToBlob(dataUrl, `gen-${Date.now()}.png`);
+
+      const currentPrompt = promptPerPicture[selectedPictureName] || "";
+      const variants = variantsPerPicture[selectedPictureName] || [];
+      const genCount = variants.filter((v) => v.type === "generated").length;
+      const newVariant: ImageVariant = {
+        type: "generated",
+        dataUrl: blobUrl,
+        label: `Gen ${genCount + 1}`,
+        prompt: currentPrompt,
+      };
+
+      setVariantsPerPicture((prev) => ({
+        ...prev,
+        [selectedPictureName]: [...(prev[selectedPictureName] || []), newVariant],
+      }));
+      setCurrentIndexPerPicture((prev) => ({
+        ...prev,
+        [selectedPictureName]: variants.length,
+      }));
+      setGeneratedImages((prev) => ({ ...prev, [selectedPictureName]: blobUrl }));
+      setShowPopup(false);
+
+      // Download
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `gemini-variant-${index + 1}.png`;
+      a.click();
+    } catch (error) {
+      console.error("Upload error:", error);
+      alert(`Failed to save image: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  };
+
+  // Remove background from current variant
+  const handleRemoveBg = async () => {
+    if (!selectedPictureName) return;
     const variants = variantsPerPicture[selectedPictureName] || [];
-    const genCount = variants.filter((v) => v.type === "generated").length;
-    const newVariant: ImageVariant = {
-      type: "generated",
-      dataUrl,
-      label: `Gen ${genCount + 1}`,
-      prompt: currentPrompt,
-    };
+    const currIdx = currentIndexPerPicture[selectedPictureName] || 0;
+    const variant = variants[currIdx];
 
-    setVariantsPerPicture((prev) => ({
-      ...prev,
-      [selectedPictureName]: [...(prev[selectedPictureName] || []), newVariant],
-    }));
-    setCurrentIndexPerPicture((prev) => ({
-      ...prev,
-      [selectedPictureName]: variants.length,
-    }));
-    setGeneratedImages((prev) => ({ ...prev, [selectedPictureName]: dataUrl }));
-    setShowPopup(false);
+    if (!variant?.dataUrl) {
+      alert("No image to process");
+      return;
+    }
 
-    // Download
-    const a = document.createElement("a");
-    a.href = dataUrl;
-    a.download = `gemini-variant-${index + 1}.png`;
-    a.click();
+    setIsRemovingBg(true);
+
+    try {
+      // If it's a base64 data URL, upload to blob first
+      let imageUrl = variant.dataUrl;
+      if (imageUrl.startsWith("data:")) {
+        imageUrl = await uploadToBlob(imageUrl, `for-removebg-${Date.now()}.png`);
+      }
+
+      const response = await fetch("/api/remove-bg", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 402) {
+          alert("Remove.bg API limit reached!\n\nCredits exhausted. Please top up your account at remove.bg");
+          return;
+        }
+        throw new Error(data.error || "Failed to remove background");
+      }
+
+      if (data.success && data.url) {
+        // Add as new variant with blob URL
+        const genCount = variants.filter((v) => v.type === "generated").length;
+        const newVariant: ImageVariant = {
+          type: "generated",
+          dataUrl: data.url,
+          label: `Gen ${genCount + 1}`,
+          prompt: variant.prompt || "",
+        };
+
+        setVariantsPerPicture((prev) => ({
+          ...prev,
+          [selectedPictureName]: [...(prev[selectedPictureName] || []), newVariant],
+        }));
+        setCurrentIndexPerPicture((prev) => ({
+          ...prev,
+          [selectedPictureName]: variants.length,
+        }));
+        setGeneratedImages((prev) => ({ ...prev, [selectedPictureName]: data.url }));
+      }
+    } catch (error) {
+      console.error("Remove BG error:", error);
+      alert(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setIsRemovingBg(false);
+    }
   };
 
   const randomize = (field: "headline" | "subhead" | "cta") => {
@@ -507,8 +645,8 @@ export default function PreviewPage() {
         else { ctx.textAlign = "left"; }
 
         const lineHeight = node.lineHeight ? node.lineHeight * scale : fontSize * 1.2;
-        // Double space = forced line break (even if shouldWrap is false)
-        const forcedLines = textValue.split("  ").map((s) => s.trim()).filter(Boolean);
+        // \n = forced line break (even if shouldWrap is false)
+        const forcedLines = textValue.split("\\n").map((s) => s.trim()).filter(Boolean);
         const lines = node.shouldWrap === false ? forcedLines : wrapText(ctx, textValue, w);
         let startY = y;
         if (node.textAlignVertical === "center") startY = y + (h - lines.length * lineHeight) / 2;
@@ -676,9 +814,20 @@ export default function PreviewPage() {
                 )}
 
                 {pictureNode && (
-                  <p className="text-xs text-muted-foreground">
-                    Figma size: <span className="text-indigo-400">{Math.round(pictureNode.width)}×{Math.round(pictureNode.height)}</span>
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      Figma size: <span className="text-indigo-400">{Math.round(pictureNode.width)}×{Math.round(pictureNode.height)}</span>
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRemoveBg}
+                      disabled={isRemovingBg || !currentVariant?.dataUrl}
+                      className="text-xs h-6 px-2"
+                    >
+                      {isRemovingBg ? "Removing..." : "Remove BG"}
+                    </Button>
+                  </div>
                 )}
 
                 {/* Variants Carousel */}
