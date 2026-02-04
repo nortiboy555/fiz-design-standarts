@@ -441,7 +441,7 @@ export default function PreviewPage() {
     setShowPopup(true);
 
     try {
-      const response = await fetch("http://localhost:3001/api/gemini/generate", {
+      const response = await fetch("/api/gemini/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -631,7 +631,7 @@ export default function PreviewPage() {
     const size = 1920;
 
     try {
-      const response = await fetch("http://localhost:3001/api/gemini/generate", {
+      const response = await fetch("/api/gemini/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
