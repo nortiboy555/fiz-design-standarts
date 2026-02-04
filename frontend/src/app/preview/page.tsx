@@ -87,12 +87,13 @@ export default function PreviewPage() {
   const [copy, setCopy] = useState({ headline: "", subhead: "", cta: "" });
   const [bgColor, setBgColor] = useState("#FFFFFF");
 
-  // Gemini Image Generation State
+  // Gemini Image Generation State - supports multiple pictures
   const [sharedPictures, setSharedPictures] = useState<SharedPicture[]>([]);
-  const [imageVariants, setImageVariants] = useState<ImageVariant[]>([]);
-  const [currentVariantIndex, setCurrentVariantIndex] = useState(0);
-  const [generatedImage, setGeneratedImage] = useState<{ name: string; dataUrl: string } | null>(null);
-  const [imagePrompt, setImagePrompt] = useState("");
+  const [selectedPictureName, setSelectedPictureName] = useState<string>("");
+  const [variantsPerPicture, setVariantsPerPicture] = useState<Record<string, ImageVariant[]>>({});
+  const [currentIndexPerPicture, setCurrentIndexPerPicture] = useState<Record<string, number>>({});
+  const [generatedImages, setGeneratedImages] = useState<Record<string, string>>({});
+  const [promptPerPicture, setPromptPerPicture] = useState<Record<string, string>>({});
   const [useReference, setUseReference] = useState(true);
   const [variantCount, setVariantCount] = useState("1");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -161,14 +162,27 @@ export default function PreviewPage() {
       const shared = findSharedPictures(templates);
       setSharedPictures(shared);
 
-      // Initialize variants with original image
+      // Initialize variants for ALL shared pictures
       if (shared.length > 0) {
-        const firstNode = Object.values(shared[0].nodes)[0];
-        setImageVariants([{ type: "original", dataUrl: firstNode?.imageUrl || null, label: "Original" }]);
-        setCurrentVariantIndex(0);
+        const newVariants: Record<string, ImageVariant[]> = {};
+        const newIndexes: Record<string, number> = {};
+        const newPrompts: Record<string, string> = {};
+
+        for (const pic of shared) {
+          const firstNode = Object.values(pic.nodes)[0];
+          newVariants[pic.name] = [{ type: "original", dataUrl: firstNode?.imageUrl || null, label: "Original" }];
+          newIndexes[pic.name] = 0;
+          newPrompts[pic.name] = "";
+        }
+
+        setVariantsPerPicture(newVariants);
+        setCurrentIndexPerPicture(newIndexes);
+        setPromptPerPicture(newPrompts);
+        setSelectedPictureName(shared[0].name);
+        setGeneratedImages({});
       }
 
-      setImportStatus(`Imported ${Object.keys(templates).length} templates: ${Object.keys(templates).join(", ")}`);
+      setImportStatus(`Imported ${Object.keys(templates).length} templates, ${shared.length} shared picture(s): ${shared.map(p => p.name).join(", ")}`);
     } catch (error) {
       setImportStatus(`Error: ${error instanceof Error ? error.message : "Failed to import"}`);
     } finally {
@@ -187,20 +201,29 @@ export default function PreviewPage() {
   }, []);
 
   const wrapText = useCallback((ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] => {
-    const words = text.split(" ");
-    const lines: string[] = [];
-    let currentLine = "";
-    words.forEach((word) => {
-      const testLine = currentLine ? `${currentLine} ${word}` : word;
-      if (ctx.measureText(testLine).width > maxWidth && currentLine) {
-        lines.push(currentLine);
-        currentLine = word;
-      } else {
-        currentLine = testLine;
-      }
-    });
-    if (currentLine) lines.push(currentLine);
-    return lines;
+    // Double space = forced line break
+    const paragraphs = text.split("  ");
+    const allLines: string[] = [];
+
+    for (const paragraph of paragraphs) {
+      const words = paragraph.trim().split(" ");
+      let currentLine = "";
+
+      words.forEach((word) => {
+        if (!word) return;
+        const testLine = currentLine ? `${currentLine} ${word}` : word;
+        if (ctx.measureText(testLine).width > maxWidth && currentLine) {
+          allLines.push(currentLine);
+          currentLine = word;
+        } else {
+          currentLine = testLine;
+        }
+      });
+
+      if (currentLine) allLines.push(currentLine);
+    }
+
+    return allLines;
   }, []);
 
   const renderCanvas = useCallback(async (format: string) => {
@@ -234,10 +257,11 @@ export default function PreviewPage() {
       if (node.nodeType === "SHAPE" || node.nodeType === "IMAGE") {
         let imageUrl = node.imageUrl;
 
-        // Check if this is a shared picture with generated image
-        if (node.nodeType === "IMAGE" && generatedImage) {
-          if (node.nodeName.toLowerCase() === generatedImage.name.toLowerCase()) {
-            imageUrl = generatedImage.dataUrl;
+        // Check if this IMAGE node has a generated replacement
+        if (node.nodeType === "IMAGE") {
+          const genUrl = generatedImages[node.nodeName];
+          if (genUrl) {
+            imageUrl = genUrl;
           }
         }
 
@@ -275,7 +299,9 @@ export default function PreviewPage() {
         else if (node.textAlign === "right") { ctx.textAlign = "right"; textX = x + w; }
         else { ctx.textAlign = "left"; }
 
-        const lines = node.shouldWrap === false ? [textValue] : wrapText(ctx, textValue, w);
+        // Double space = forced line break (even if shouldWrap is false)
+        const forcedLines = textValue.split("  ").map((s) => s.trim()).filter(Boolean);
+        const lines = node.shouldWrap === false ? forcedLines : wrapText(ctx, textValue, w);
         const totalTextHeight = lines.length * lineHeight;
 
         let startY = y;
@@ -286,37 +312,60 @@ export default function PreviewPage() {
         ctx.globalAlpha = 1;
       }
     }
-  }, [figmaTemplates, copy, bgColor, generatedImage, loadImage, wrapText]);
+  }, [figmaTemplates, copy, bgColor, generatedImages, loadImage, wrapText]);
 
   useEffect(() => {
     Object.keys(figmaTemplates).forEach((format) => renderCanvas(format));
-  }, [figmaTemplates, copy, bgColor, generatedImage, renderCanvas]);
+  }, [figmaTemplates, copy, bgColor, generatedImages, renderCanvas]);
 
-  // Carousel navigation
+  // Get current picture data
+  const selectedPicture = sharedPictures.find((p) => p.name === selectedPictureName);
+  const currentVariants = variantsPerPicture[selectedPictureName] || [];
+  const currentVariantIndex = currentIndexPerPicture[selectedPictureName] || 0;
+  const currentVariant = currentVariants[currentVariantIndex];
+
+  // Carousel navigation for selected picture
   const navigateCarousel = (direction: number) => {
-    const newIdx = currentVariantIndex + direction;
-    if (newIdx >= 0 && newIdx < imageVariants.length) {
-      setCurrentVariantIndex(newIdx);
-      const variant = imageVariants[newIdx];
-      if (variant.type === "generated" && variant.dataUrl && sharedPictures.length > 0) {
-        setGeneratedImage({ name: sharedPictures[0].name, dataUrl: variant.dataUrl });
+    if (!selectedPictureName) return;
+    const variants = variantsPerPicture[selectedPictureName] || [];
+    const currIdx = currentIndexPerPicture[selectedPictureName] || 0;
+    const newIdx = currIdx + direction;
+
+    if (newIdx >= 0 && newIdx < variants.length) {
+      setCurrentIndexPerPicture((prev) => ({ ...prev, [selectedPictureName]: newIdx }));
+      const variant = variants[newIdx];
+
+      // Update prompt to show this variant's prompt
+      setPromptPerPicture((prev) => ({
+        ...prev,
+        [selectedPictureName]: variant.prompt || "",
+      }));
+
+      if (variant.type === "generated" && variant.dataUrl) {
+        setGeneratedImages((prev) => ({ ...prev, [selectedPictureName]: variant.dataUrl! }));
       } else {
-        setGeneratedImage(null);
+        setGeneratedImages((prev) => {
+          const next = { ...prev };
+          delete next[selectedPictureName];
+          return next;
+        });
       }
     }
   };
 
-  // Generate images with Gemini
+  // Generate images with Gemini for selected picture
   const handleGenerateImages = async () => {
-    if (!imagePrompt.trim() || sharedPictures.length === 0) return;
+    const currentPrompt = promptPerPicture[selectedPictureName] || "";
+    if (!currentPrompt.trim() || !selectedPicture) return;
 
     setIsGenerating(true);
-    const firstPicture = sharedPictures[0];
-    const firstNode = Object.values(firstPicture.nodes)[0];
+    const firstNode = Object.values(selectedPicture.nodes)[0];
     const width = Math.round(firstNode.width || 1024);
     const height = Math.round(firstNode.height || 1024);
 
-    const referenceUrl = useReference ? imageVariants[currentVariantIndex]?.dataUrl : null;
+    const variants = variantsPerPicture[selectedPictureName] || [];
+    const currIdx = currentIndexPerPicture[selectedPictureName] || 0;
+    const referenceUrl = useReference ? variants[currIdx]?.dataUrl : null;
 
     setPopupImages([]);
     setShowPopup(true);
@@ -326,7 +375,7 @@ export default function PreviewPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt: imagePrompt,
+          prompt: currentPrompt,
           width,
           height,
           referenceImageUrl: referenceUrl,
@@ -357,19 +406,29 @@ export default function PreviewPage() {
     }
   };
 
-  // Select generated image from popup
+  // Select generated image from popup for selected picture
   const selectGeneratedImage = (dataUrl: string, index: number) => {
-    const genCount = imageVariants.filter((v) => v.type === "generated").length;
+    if (!selectedPictureName) return;
+
+    const currentPrompt = promptPerPicture[selectedPictureName] || "";
+    const variants = variantsPerPicture[selectedPictureName] || [];
+    const genCount = variants.filter((v) => v.type === "generated").length;
     const newVariant: ImageVariant = {
       type: "generated",
       dataUrl,
       label: `Gen ${genCount + 1}`,
-      prompt: imagePrompt,
+      prompt: currentPrompt,
     };
 
-    setImageVariants((prev) => [...prev, newVariant]);
-    setCurrentVariantIndex(imageVariants.length);
-    setGeneratedImage({ name: sharedPictures[0].name, dataUrl });
+    setVariantsPerPicture((prev) => ({
+      ...prev,
+      [selectedPictureName]: [...(prev[selectedPictureName] || []), newVariant],
+    }));
+    setCurrentIndexPerPicture((prev) => ({
+      ...prev,
+      [selectedPictureName]: variants.length,
+    }));
+    setGeneratedImages((prev) => ({ ...prev, [selectedPictureName]: dataUrl }));
     setShowPopup(false);
 
     // Download
@@ -418,8 +477,9 @@ export default function PreviewPage() {
 
       if (node.nodeType === "SHAPE" || node.nodeType === "IMAGE") {
         let imageUrl = node.imageUrl;
-        if (node.nodeType === "IMAGE" && generatedImage && node.nodeName.toLowerCase() === generatedImage.name.toLowerCase()) {
-          imageUrl = generatedImage.dataUrl;
+        if (node.nodeType === "IMAGE") {
+          const genUrl = generatedImages[node.nodeName];
+          if (genUrl) imageUrl = genUrl;
         }
         if (imageUrl) {
           try {
@@ -447,7 +507,9 @@ export default function PreviewPage() {
         else { ctx.textAlign = "left"; }
 
         const lineHeight = node.lineHeight ? node.lineHeight * scale : fontSize * 1.2;
-        const lines = node.shouldWrap === false ? [textValue] : wrapText(ctx, textValue, w);
+        // Double space = forced line break (even if shouldWrap is false)
+        const forcedLines = textValue.split("  ").map((s) => s.trim()).filter(Boolean);
+        const lines = node.shouldWrap === false ? forcedLines : wrapText(ctx, textValue, w);
         let startY = y;
         if (node.textAlignVertical === "center") startY = y + (h - lines.length * lineHeight) / 2;
         lines.forEach((line, i) => ctx.fillText(line, textX, startY + i * lineHeight));
@@ -466,8 +528,7 @@ export default function PreviewPage() {
     }, "image/png");
   };
 
-  const currentVariant = imageVariants[currentVariantIndex];
-  const pictureNode = sharedPictures.length > 0 ? Object.values(sharedPictures[0].nodes)[0] : null;
+  const pictureNode = selectedPicture ? Object.values(selectedPicture.nodes)[0] : null;
   const hasTemplates = Object.keys(figmaTemplates).length > 0;
 
   const resetImport = () => {
@@ -475,9 +536,11 @@ export default function PreviewPage() {
     setFigmaUrl("");
     setImportStatus(null);
     setSharedPictures([]);
-    setImageVariants([]);
-    setCurrentVariantIndex(0);
-    setGeneratedImage(null);
+    setSelectedPictureName("");
+    setVariantsPerPicture({});
+    setCurrentIndexPerPicture({});
+    setGeneratedImages({});
+    setPromptPerPicture({});
   };
 
   // Figma Logo component
@@ -586,7 +649,31 @@ export default function PreviewPage() {
             {/* Picture (Gemini AI) - показываем только если есть shared pictures */}
             {sharedPictures.length > 0 && (
               <div className="space-y-3 pt-4 border-t border-border/40">
-                <Label>Picture (Gemini AI)</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Picture (Gemini AI)</Label>
+                  {sharedPictures.length > 1 && (
+                    <span className="text-xs text-muted-foreground">{sharedPictures.length} pictures</span>
+                  )}
+                </div>
+
+                {/* Picture Selector - показываем если больше одной картинки */}
+                {sharedPictures.length > 1 && (
+                  <div className="flex gap-1 bg-muted rounded-md p-1">
+                    {sharedPictures.map((pic) => (
+                      <button
+                        key={pic.name}
+                        onClick={() => setSelectedPictureName(pic.name)}
+                        className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+                          selectedPictureName === pic.name
+                            ? "bg-background shadow-sm text-foreground"
+                            : "text-muted-foreground hover:bg-background/50"
+                        }`}
+                      >
+                        {pic.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 {pictureNode && (
                   <p className="text-xs text-muted-foreground">
@@ -604,18 +691,28 @@ export default function PreviewPage() {
                       <span className="text-xs text-muted-foreground">No image</span>
                     )}
                   </div>
-                  <Button variant="outline" size="sm" disabled={currentVariantIndex === imageVariants.length - 1} onClick={() => navigateCarousel(1)}>&gt;</Button>
+                  <Button variant="outline" size="sm" disabled={currentVariantIndex === currentVariants.length - 1} onClick={() => navigateCarousel(1)}>&gt;</Button>
                 </div>
 
                 {/* Carousel Indicator */}
                 <div className="flex justify-center gap-1">
-                  {imageVariants.map((v, i) => (
+                  {currentVariants.map((v, i) => (
                     <button key={i} onClick={() => {
-                      setCurrentVariantIndex(i);
+                      if (!selectedPictureName) return;
+                      setCurrentIndexPerPicture((prev) => ({ ...prev, [selectedPictureName]: i }));
+                      // Update prompt to show this variant's prompt
+                      setPromptPerPicture((prev) => ({
+                        ...prev,
+                        [selectedPictureName]: v.prompt || "",
+                      }));
                       if (v.type === "generated" && v.dataUrl) {
-                        setGeneratedImage({ name: sharedPictures[0].name, dataUrl: v.dataUrl });
+                        setGeneratedImages((prev) => ({ ...prev, [selectedPictureName]: v.dataUrl! }));
                       } else {
-                        setGeneratedImage(null);
+                        setGeneratedImages((prev) => {
+                          const next = { ...prev };
+                          delete next[selectedPictureName];
+                          return next;
+                        });
                       }
                     }}
                       className={`w-2 h-2 rounded-full transition-colors ${i === currentVariantIndex ? "bg-indigo-500" : v.type === "original" ? "bg-muted-foreground/50" : "bg-emerald-500/50"}`}
@@ -628,8 +725,8 @@ export default function PreviewPage() {
 
                 {/* Prompt */}
                 <Textarea
-                  value={imagePrompt}
-                  onChange={(e) => setImagePrompt(e.target.value)}
+                  value={promptPerPicture[selectedPictureName] || ""}
+                  onChange={(e) => setPromptPerPicture((prev) => ({ ...prev, [selectedPictureName]: e.target.value }))}
                   placeholder="Describe the image to generate...&#10;&#10;Example: Professional photo of a person using banking app"
                   rows={3}
                   className="text-sm"
@@ -652,7 +749,7 @@ export default function PreviewPage() {
                   </div>
                 </div>
 
-                <Button onClick={handleGenerateImages} disabled={isGenerating || !imagePrompt.trim()} variant="secondary" className="w-full">
+                <Button onClick={handleGenerateImages} disabled={isGenerating || !(promptPerPicture[selectedPictureName] || "").trim()} variant="secondary" className="w-full">
                   {isGenerating ? "Generating..." : "Generate with Gemini"}
                 </Button>
               </div>
