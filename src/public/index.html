@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FIZ Creative Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <h1>FIZ Creative Hub</h1>
+        <span class="badge">Beta</span>
+      </div>
+
+      <nav>
+        <div class="nav-section">
+          <div class="nav-section-title">Tools</div>
+          <a class="nav-link active" data-page="dashboard">
+            <span class="icon">🏠</span> Dashboard
+          </a>
+          <a class="nav-link" data-page="copylab">
+            <span class="icon">✍️</span> Copy Lab
+          </a>
+          <a class="nav-link" data-page="preview">
+            <span class="icon">🖼️</span> Creative Preview
+          </a>
+          <a class="nav-link" data-page="checklist">
+            <span class="icon">✅</span> Pre-flight Check
+          </a>
+          <a class="nav-link" data-page="testplanner">
+            <span class="icon">🧪</span> Test Planner
+          </a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Reference</div>
+          <a class="nav-link" data-page="icp">
+            <span class="icon">👤</span> ICP Cards
+          </a>
+          <a class="nav-link" data-page="formats">
+            <span class="icon">📐</span> Format Guide
+          </a>
+          <a class="nav-link" data-page="competitors">
+            <span class="icon">🎯</span> Competitors
+          </a>
+          <a class="nav-link" data-page="visuals">
+            <span class="icon">🎨</span> Visual Styles
+          </a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Copy Library</div>
+          <a class="nav-link" data-page="headlines">
+            <span class="icon">📝</span> Copy Formulas
+          </a>
+          <a class="nav-link" data-page="banwords">
+            <span class="icon">🚫</span> Compliance
+          </a>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+
+      <!-- ==================== DASHBOARD ==================== -->
+      <div id="page-dashboard" class="page active">
+        <div class="page-header">
+          <h2>Dashboard</h2>
+          <p>Marketing creative tools and references for FIZ campaigns</p>
+        </div>
+
+        <div class="section-header">
+          <h3>Quick Actions</h3>
+        </div>
+        <div class="quick-actions">
+          <a class="quick-action" data-page="copylab">
+            <span class="icon">✍️</span>
+            <span>Generate Copy</span>
+          </a>
+          <a class="quick-action" data-page="preview">
+            <span class="icon">🖼️</span>
+            <span>Creative Preview</span>
+          </a>
+          <a class="quick-action" data-page="checklist">
+            <span class="icon">✅</span>
+            <span>Pre-flight Check</span>
+          </a>
+          <a class="quick-action" data-page="formats">
+            <span class="icon">📐</span>
+            <span>Format Specs</span>
+          </a>
+        </div>
+
+        <div class="section-header">
+          <h3>Reference Library</h3>
+        </div>
+        <div class="quick-actions">
+          <a class="quick-action" data-page="icp">
+            <span class="icon">👤</span>
+            <span>ICP Cards</span>
+          </a>
+          <a class="quick-action" data-page="competitors">
+            <span class="icon">🎯</span>
+            <span>Competitors</span>
+          </a>
+          <a class="quick-action" data-page="headlines">
+            <span class="icon">📝</span>
+            <span>Copy Formulas</span>
+          </a>
+          <a class="quick-action" data-page="banwords">
+            <span class="icon">🚫</span>
+            <span>Compliance</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- ==================== ICP CARDS ==================== -->
+      <div id="page-icp" class="page">
+        <div class="page-header">
+          <h2>ICP Cards</h2>
+          <p>Target audience segments — fears, triggers, keywords, and visual preferences</p>
+        </div>
+        <div id="icp-container" class="icp-cards"></div>
+      </div>
+
+      <!-- ==================== COMPETITORS ==================== -->
+      <div id="page-competitors" class="page">
+        <div class="page-header">
+          <h2>Competitor Analysis</h2>
+          <p>Market positioning and FIZ differentiation angles</p>
+        </div>
+        <div id="competitors-container"></div>
+      </div>
+
+      <!-- ==================== COPY LAB ==================== -->
+      <div id="page-copylab" class="page">
+        <div class="page-header">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+            <div>
+              <h2>Copy Lab</h2>
+              <p>Generate compliant ad copy and check for issues</p>
+            </div>
+            <div class="lang-toggle">
+              <button class="lang-btn active" data-lang="pt">PT</button>
+              <button class="lang-btn" data-lang="en">EN</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="copy-lab">
+          <div class="copy-generator">
+            <div class="copy-section-title">Generate Copy</div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Target ICP</label>
+                <select class="form-select" id="gen-icp">
+                  <option value="trabalhador">Trabalhador Independente</option>
+                  <option value="expat">Expat / Digital Nomad</option>
+                  <option value="dependente">Single Client Contractor</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Offer Type</label>
+                <select class="form-select" id="gen-offer">
+                  <option value="autopilot">Autopilot (IVA + SS)</option>
+                  <option value="escudo">Escudo Fiscal</option>
+                  <option value="free">0 EUR Forever</option>
+                  <option value="whatsapp">WhatsApp-first</option>
+                </select>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" id="generate-btn">
+              Generate Combination
+            </button>
+
+            <div class="generated-copy" id="generated-copy">
+              <div class="copy-item">
+                <div class="copy-label">Headline</div>
+                <div class="copy-text">
+                  <span id="gen-headline">Click generate to create copy</span>
+                  <button class="copy-btn" data-copy="headline">Copy</button>
+                </div>
+              </div>
+              <div class="copy-item">
+                <div class="copy-label">Subhead</div>
+                <div class="copy-text">
+                  <span id="gen-subhead">-</span>
+                  <button class="copy-btn" data-copy="subhead">Copy</button>
+                </div>
+              </div>
+              <div class="copy-item">
+                <div class="copy-label">CTA</div>
+                <div class="copy-text">
+                  <span id="gen-cta">-</span>
+                  <button class="copy-btn" data-copy="cta">Copy</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="btn-group">
+              <button class="btn btn-secondary" id="copy-all-btn">Copy All</button>
+            </div>
+          </div>
+
+          <div class="copy-checker">
+            <div class="copy-section-title">Check Your Copy</div>
+
+            <div class="form-group">
+              <label>Paste your ad copy here</label>
+              <textarea class="form-textarea" id="check-input" placeholder="Paste your headline, subhead, or full ad copy to check for compliance issues..."></textarea>
+            </div>
+
+            <button class="btn btn-primary" id="check-btn">
+              Check for Issues
+            </button>
+
+            <div class="check-results" id="check-results">
+              <p class="text-muted">Results will appear here after checking</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== CHECKLIST ==================== -->
+      <div id="page-checklist" class="page">
+        <div class="page-header">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+            <div>
+              <h2>Pre-flight Checklist</h2>
+              <p>Verify your creative before publishing to Meta</p>
+            </div>
+            <div class="lang-toggle">
+              <button class="lang-btn active" data-lang="pt">PT</button>
+              <button class="lang-btn" data-lang="en">EN</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="checklist-container" class="checklist-sections"></div>
+
+        <div class="btn-group mt-lg">
+          <button class="btn btn-secondary" id="reset-checklist">Reset All Checkboxes</button>
+        </div>
+      </div>
+
+      <!-- ==================== FORMAT GUIDE ==================== -->
+      <div id="page-formats" class="page">
+        <div class="page-header">
+          <h2>Format Guide</h2>
+          <p>Specifications and safe zones for Meta placements</p>
+        </div>
+
+        <div class="format-tabs" id="format-tabs"></div>
+        <div id="format-content"></div>
+      </div>
+
+      <!-- ==================== VISUAL DIRECTIONS ==================== -->
+      <div id="page-visuals" class="page">
+        <div class="page-header">
+          <h2>Visual Directions</h2>
+          <p>Style guides, color palettes, and template references</p>
+        </div>
+
+        <div class="section-header">
+          <h3>Style Directions</h3>
+        </div>
+        <div id="visuals-container" class="visuals-grid"></div>
+
+        <div class="section-header">
+          <h3>Static Templates</h3>
+        </div>
+        <div id="templates-container"></div>
+      </div>
+
+      <!-- ==================== HEADLINES ==================== -->
+      <div id="page-headlines" class="page">
+        <div class="page-header">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+            <div>
+              <h2>Copy Formulas</h2>
+              <p>Pre-approved headlines, subheads, and CTAs</p>
+            </div>
+            <div class="lang-toggle">
+              <button class="lang-btn active" data-lang="pt">PT</button>
+              <button class="lang-btn" data-lang="en">EN</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="format-tabs mb-xl" id="headline-filters">
+          <button class="format-tab active" data-filter="all">All</button>
+          <button class="format-tab" data-filter="autopilot">Autopilot</button>
+          <button class="format-tab" data-filter="escudo">Escudo</button>
+          <button class="format-tab" data-filter="free">Free</button>
+          <button class="format-tab" data-filter="whatsapp">WhatsApp</button>
+        </div>
+
+        <div id="headlines-container"></div>
+      </div>
+
+      <!-- ==================== BAN WORDS ==================== -->
+      <div id="page-banwords" class="page">
+        <div class="page-header">
+          <h2>Compliance Guide</h2>
+          <p>Banned words, risky patterns, and safe alternatives</p>
+        </div>
+        <div id="banwords-container"></div>
+      </div>
+
+      <!-- ==================== CREATIVE PREVIEW ==================== -->
+      <div id="page-preview" class="page">
+        <div class="page-header">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+            <div>
+              <h2>Creative Preview</h2>
+              <p>Preview your copy across all Meta ad formats and download templates</p>
+            </div>
+            <div class="lang-toggle">
+              <button class="lang-btn active" data-lang="pt">PT</button>
+              <button class="lang-btn" data-lang="en">EN</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Figma Import Section -->
+        <div class="figma-import card mb-xl">
+          <div class="figma-import-header">
+            <div class="figma-icon">
+              <svg width="24" height="24" viewBox="0 0 38 57" fill="none">
+                <path d="M19 28.5C19 23.2533 23.2533 19 28.5 19C33.7467 19 38 23.2533 38 28.5C38 33.7467 33.7467 38 28.5 38C23.2533 38 19 33.7467 19 28.5Z" fill="#1ABCFE"/>
+                <path d="M0 47.5C0 42.2533 4.25329 38 9.5 38H19V47.5C19 52.7467 14.7467 57 9.5 57C4.25329 57 0 52.7467 0 47.5Z" fill="#0ACF83"/>
+                <path d="M19 0V19H28.5C33.7467 19 38 14.7467 38 9.5C38 4.25329 33.7467 0 28.5 0H19Z" fill="#FF7262"/>
+                <path d="M0 9.5C0 14.7467 4.25329 19 9.5 19H19V0H9.5C4.25329 0 0 4.25329 0 9.5Z" fill="#F24E1E"/>
+                <path d="M0 28.5C0 33.7467 4.25329 38 9.5 38H19V19H9.5C4.25329 19 0 23.2533 0 28.5Z" fill="#A259FF"/>
+              </svg>
+            </div>
+            <div>
+              <h3>Import from Figma</h3>
+              <p class="text-muted">Paste a Figma URL to import templates with Headline, Subhead, CTA layers</p>
+            </div>
+          </div>
+
+          <div class="figma-import-form">
+            <div class="form-group" style="flex: 1;">
+              <input type="text" class="form-input" id="figma-url-input"
+                     placeholder="https://www.figma.com/design/eqGJZTpAqCjAE5UqwMbcum/BASE?node-id=30-1415">
+            </div>
+            <button class="btn btn-primary" id="figma-import-btn">Import</button>
+          </div>
+
+          <div id="figma-results" class="figma-results"></div>
+        </div>
+
+        <div class="preview-layout">
+          <!-- Settings Panel -->
+          <div class="preview-inputs card">
+            <div class="copy-section-title">Settings</div>
+
+            <div class="input-mode-toggle">
+              <button class="mode-btn" data-mode="library">From Library</button>
+              <button class="mode-btn active" data-mode="manual">Manual Input</button>
+            </div>
+
+            <!-- Library Mode -->
+            <div id="library-mode" class="input-mode">
+              <div class="form-group">
+                <label>Headline</label>
+                <div class="library-select">
+                  <select class="form-select" id="preview-headline-select">
+                    <option value="">Select headline...</option>
+                  </select>
+                  <button class="btn btn-secondary btn-sm" id="random-headline-btn">Random</button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Subhead</label>
+                <div class="library-select">
+                  <select class="form-select" id="preview-subhead-select">
+                    <option value="">Select subhead...</option>
+                  </select>
+                  <button class="btn btn-secondary btn-sm" id="random-subhead-btn">Random</button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>CTA</label>
+                <div class="library-select">
+                  <select class="form-select" id="preview-cta-select">
+                    <option value="">Select CTA...</option>
+                  </select>
+                  <button class="btn btn-secondary btn-sm" id="random-cta-btn">Random</button>
+                </div>
+              </div>
+
+              <button class="btn btn-primary" id="random-all-btn">Random All</button>
+            </div>
+
+            <!-- Manual Mode -->
+            <div id="manual-mode" class="input-mode active">
+              <div class="form-group">
+                <label>Headline</label>
+                <input type="text" class="form-input" id="preview-headline-input" placeholder="Main headline...">
+              </div>
+
+              <div class="form-group">
+                <label>Subhead</label>
+                <input type="text" class="form-input" id="preview-subhead-input" placeholder="Subheadline...">
+              </div>
+
+              <div class="form-group">
+                <label>CTA</label>
+                <input type="text" class="form-input" id="preview-cta-input" placeholder="Call to action...">
+              </div>
+            </div>
+
+            <!-- Background Color -->
+            <div class="form-group mt-lg">
+              <label>Background Color</label>
+              <div class="color-input-group">
+                <input type="color" id="bg-color-picker" value="#FFFFFF" class="color-picker">
+                <input type="text" id="bg-color-hex" value="#FFFFFF" class="form-input color-hex" placeholder="#FFFFFF">
+              </div>
+            </div>
+
+            <!-- Image Generation with Gemini -->
+            <div class="form-group mt-lg" id="image-gen-section" style="display: none;">
+              <label>Picture (Gemini AI)</label>
+              <div id="picture-size-info" class="picture-size-info"></div>
+
+              <!-- Variants Carousel -->
+              <div class="variants-carousel">
+                <button class="carousel-btn carousel-prev" id="carousel-prev">&lt;</button>
+                <div class="carousel-track" id="carousel-track"></div>
+                <button class="carousel-btn carousel-next" id="carousel-next">&gt;</button>
+              </div>
+              <div class="carousel-indicator" id="carousel-indicator"></div>
+
+              <textarea id="image-prompt" class="form-input" rows="3" placeholder="Describe the image to generate...&#10;&#10;Example: Professional photo of a person using banking app on phone, modern office, soft lighting"></textarea>
+
+              <div class="gen-options mt-sm">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="use-reference" checked>
+                  <span>Use as reference</span>
+                </label>
+                <div class="variant-select">
+                  <label>Variants:</label>
+                  <select id="variant-count" class="form-select-sm">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4" selected>4</option>
+                    <option value="5">5</option>
+                  </select>
+                </div>
+              </div>
+
+              <button class="btn btn-secondary btn-full mt-sm" id="generate-image-btn">
+                <span id="generate-btn-text">Generate with Gemini</span>
+                <span id="generate-spinner" style="display: none;">Generating...</span>
+              </button>
+            </div>
+
+            <button class="btn btn-primary btn-full mt-lg" id="apply-text-btn">Apply</button>
+          </div>
+
+          <!-- Preview Panel -->
+          <div class="preview-panel">
+            <div class="preview-grid">
+              <!-- 9:16 Story -->
+              <div class="preview-item" data-format="9:16">
+                <div class="preview-label">
+                  <span>9:16 Story/Reels</span>
+                  <span class="preview-size">1080×1920</span>
+                </div>
+                <div class="preview-canvas preview-clickable" id="canvas-916" data-download="916"></div>
+              </div>
+
+              <!-- 4:5 Feed -->
+              <div class="preview-item" data-format="4:5">
+                <div class="preview-label">
+                  <span>4:5 Feed</span>
+                  <span class="preview-size">1080×1350</span>
+                </div>
+                <div class="preview-canvas preview-clickable" id="canvas-45" data-download="45"></div>
+              </div>
+
+              <!-- 1:1 Square -->
+              <div class="preview-item" data-format="1:1">
+                <div class="preview-label">
+                  <span>1:1 Square</span>
+                  <span class="preview-size">1080×1080</span>
+                </div>
+                <div class="preview-canvas preview-clickable" id="canvas-11" data-download="11"></div>
+              </div>
+
+              <!-- 16:9 Landscape -->
+              <div class="preview-item" data-format="16:9">
+                <div class="preview-label">
+                  <span>16:9 Landscape</span>
+                  <span class="preview-size">1920×1080</span>
+                </div>
+                <div class="preview-canvas preview-clickable" id="canvas-169" data-download="169"></div>
+              </div>
+            </div>
+
+            <div class="btn-group mt-lg" style="justify-content: center;">
+              <button class="btn btn-primary" id="download-all-btn">Скачать все PNG</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== TEST PLANNER ==================== -->
+      <div id="page-testplanner" class="page">
+        <div class="page-header">
+          <h2>Test Planner</h2>
+          <p>Generate A/B test matrices and plan creative sprints</p>
+        </div>
+
+        <div class="section-header">
+          <h3>Quick Start Templates</h3>
+        </div>
+        <div id="prebuilt-matrices" class="test-templates"></div>
+
+        <div class="section-header">
+          <h3>Custom Matrix Builder</h3>
+        </div>
+        <div class="test-builder card">
+          <div class="test-builder-header">
+            <p class="text-secondary">Select variables to test. Recommended order: Offer+Hook → Proof → Visual → CTA</p>
+          </div>
+          <div id="variable-selector" class="variable-selector"></div>
+          <div class="btn-group">
+            <button class="btn btn-primary" id="generate-matrix-btn">Generate Matrix</button>
+            <button class="btn btn-secondary" id="clear-matrix-btn">Clear</button>
+          </div>
+        </div>
+
+        <div id="matrix-result" class="matrix-result"></div>
+
+        <div class="section-header">
+          <h3>7-Day Sprint Template</h3>
+        </div>
+        <div id="sprint-template" class="sprint-timeline"></div>
+
+        <div class="section-header">
+          <h3>KPI Benchmarks</h3>
+        </div>
+        <div id="kpi-benchmarks" class="kpi-grid"></div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Image Selection Popup (outside of all containers for proper z-index) -->
+  <div id="image-popup" class="image-popup-overlay" style="display: none;">
+    <div class="image-popup">
+      <div class="image-popup-header">
+        <h3>Select variant (click to select and download)</h3>
+        <button class="popup-close-btn" id="popup-close">&times;</button>
+      </div>
+      <div class="image-popup-grid" id="popup-grid"></div>
+      <div class="image-popup-footer">
+        <button class="btn btn-secondary" id="popup-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
