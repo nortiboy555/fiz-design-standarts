@@ -228,23 +228,69 @@ export default function TestPlannerPage() {
       {/* Sprint Template */}
       <section className="mb-10">
         <h2 className="text-lg font-semibold mb-4">7-Day Sprint Template</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+        <div className="space-y-3">
           {Object.entries(data.sprintTemplate).map(([key, day], index) => (
-            <Card key={key} className="border-border/40">
-              <CardContent className="p-4">
-                <div className="text-xs text-muted-foreground mb-1">Day {index + 1}</div>
-                <div className="font-medium text-sm mb-3">{day.name}</div>
-                <ul className="text-xs text-muted-foreground space-y-1 mb-3">
-                  {day.tasks.slice(0, 2).map((task, i) => (
-                    <li key={i}>• {task}</li>
-                  ))}
-                </ul>
-                <div className="flex flex-wrap gap-1">
-                  {day.metrics.map((m, i) => (
-                    <Badge key={i} variant="outline" className="text-[10px]">
-                      {m}
-                    </Badge>
-                  ))}
+            <Card
+              key={key}
+              className={`border-border/40 overflow-hidden transition-all hover:shadow-md ${
+                index === 0 ? "border-l-4 border-l-emerald-500" :
+                index === 6 ? "border-l-4 border-l-indigo-500" :
+                "border-l-4 border-l-border/60"
+              }`}
+            >
+              <CardContent className="p-0">
+                <div className="flex items-stretch">
+                  {/* Day Number */}
+                  <div className={`w-20 flex-shrink-0 flex flex-col items-center justify-center py-4 ${
+                    index === 0 ? "bg-emerald-500/10" :
+                    index === 6 ? "bg-indigo-500/10" :
+                    "bg-muted/30"
+                  }`}>
+                    <div className={`text-2xl font-bold ${
+                      index === 0 ? "text-emerald-400" :
+                      index === 6 ? "text-indigo-400" :
+                      "text-foreground/60"
+                    }`}>
+                      {index + 1}
+                    </div>
+                    <div className="text-xs text-muted-foreground uppercase">Day</div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 p-4 grid grid-cols-1 md:grid-cols-[200px_1fr_auto] gap-4 items-center">
+                    {/* Phase Name */}
+                    <div>
+                      <div className={`text-lg font-semibold ${
+                        index === 0 ? "text-emerald-400" :
+                        index === 6 ? "text-indigo-400" : ""
+                      }`}>
+                        {day.name}
+                      </div>
+                    </div>
+
+                    {/* Tasks */}
+                    <div className="flex flex-wrap gap-x-6 gap-y-1">
+                      {day.tasks.map((task, i) => (
+                        <div key={i} className="flex items-center gap-2 text-sm text-foreground/80">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></span>
+                          {task}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Metrics */}
+                    <div className="flex flex-wrap gap-1.5 justify-end">
+                      {day.metrics.map((m, i) => (
+                        <Badge
+                          key={i}
+                          variant="outline"
+                          className="text-xs font-medium"
+                        >
+                          {m}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -255,37 +301,85 @@ export default function TestPlannerPage() {
       {/* KPI Benchmarks */}
       <section>
         <h2 className="text-lg font-semibold mb-4">KPI Benchmarks</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {Object.entries(data.kpiBenchmarks).map(([key, kpi]) => (
-            <Card key={key} className="border-border/40">
-              <CardContent className="p-5 text-center">
-                <h4 className="text-sm font-medium uppercase text-muted-foreground mb-4">
-                  {key}
-                </h4>
-                <div className="space-y-3">
-                  <div>
-                    <div className="text-xs text-muted-foreground">Good</div>
-                    <div className="text-xl font-bold text-emerald-400">
-                      {kpi.good}
-                      <span className="text-sm font-normal text-muted-foreground ml-1">
-                        {kpi.unit}
-                      </span>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground">Great</div>
-                    <div className="text-xl font-bold text-indigo-400">
-                      {kpi.great}
-                      <span className="text-sm font-normal text-muted-foreground ml-1">
-                        {kpi.unit}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Card className="border-border/40">
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border/40 bg-muted/30">
+                  <TableHead className="w-[140px] font-semibold">Metric</TableHead>
+                  <TableHead className="font-semibold text-center w-[120px]">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                      Good
+                    </span>
+                  </TableHead>
+                  <TableHead className="font-semibold text-center w-[120px]">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-indigo-400"></span>
+                      Great
+                    </span>
+                  </TableHead>
+                  <TableHead className="font-semibold">Visual</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Object.entries(data.kpiBenchmarks).map(([key, kpi]) => {
+                  const goodNum = parseFloat(String(kpi.good).replace(/[^\d.]/g, ''));
+                  const greatNum = parseFloat(String(kpi.great).replace(/[^\d.]/g, ''));
+                  const maxVal = Math.max(goodNum, greatNum);
+                  const goodPercent = (goodNum / maxVal) * 100;
+                  const greatPercent = (greatNum / maxVal) * 100;
+
+                  return (
+                    <TableRow key={key} className="border-border/40 hover:bg-muted/30">
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
+                            key === 'CTR' ? 'bg-blue-500/20 text-blue-400' :
+                            key === 'CPC' ? 'bg-amber-500/20 text-amber-400' :
+                            key === 'CVR' ? 'bg-purple-500/20 text-purple-400' :
+                            'bg-emerald-500/20 text-emerald-400'
+                          }`}>
+                            {key.substring(0, 3)}
+                          </div>
+                          <span className="uppercase tracking-wide">{key}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="text-lg font-bold text-emerald-400">{kpi.good}</span>
+                        <span className="text-xs text-muted-foreground ml-1">{kpi.unit}</span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="text-lg font-bold text-indigo-400">{kpi.great}</span>
+                        <span className="text-xs text-muted-foreground ml-1">{kpi.unit}</span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1.5 min-w-[200px]">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-emerald-400 rounded-full transition-all"
+                                style={{ width: `${goodPercent}%` }}
+                              />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-indigo-400 rounded-full transition-all"
+                                style={{ width: `${greatPercent}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       </section>
     </div>
   );
