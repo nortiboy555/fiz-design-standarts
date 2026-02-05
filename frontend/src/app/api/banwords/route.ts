@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
 
 const banWords = {
   hardBan: [
@@ -40,6 +41,9 @@ const severityLevels = {
   low: { label: "Low Risk", color: "#3b82f6", action: "Consider reviewing" },
 };
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authError = requireAuth(request);
+  if (authError) return authError;
+
   return NextResponse.json({ hardBan: banWords.hardBan, softBan: banWords.softBan, watchPatterns: banWords.watchPatterns, complianceRules, severityLevels });
 }

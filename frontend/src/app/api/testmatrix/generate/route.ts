@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
 
 const testVariables: Record<string, { id: string; options: Array<{ id: string; name: string; example: string }> }> = {
   hook: {
@@ -64,6 +65,9 @@ function generateMatrix(selectedVariables: string[]) {
 }
 
 export async function POST(request: NextRequest) {
+  const authError = requireAuth(request);
+  if (authError) return authError;
+
   try {
     const { variables } = await request.json();
 

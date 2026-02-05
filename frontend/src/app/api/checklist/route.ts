@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
 
 const checklist = {
   adCopy: {
@@ -64,6 +65,9 @@ const checklistMeta = {
   totalCount: Object.values(checklist).reduce((acc, section) => acc + section.items.length, 0),
 };
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authError = requireAuth(request);
+  if (authError) return authError;
+
   return NextResponse.json({ sections: checklist, meta: checklistMeta });
 }

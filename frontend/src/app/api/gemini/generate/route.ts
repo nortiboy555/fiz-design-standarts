@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
+import { safeFetch } from "@/lib/url-validator";
 
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 const GEMINI_IMAGE_MODEL = "gemini-3-pro-image-preview";
@@ -76,6 +78,10 @@ async function generateSingleImage(
 }
 
 export async function POST(request: NextRequest) {
+  // Check authentication
+  const authError = requireAuth(request);
+  if (authError) return authError;
+
   try {
     if (!GEMINI_API_KEY) {
       return NextResponse.json(
@@ -103,7 +109,8 @@ export async function POST(request: NextRequest) {
             };
           }
         } else {
-          const imgResponse = await fetch(referenceImageUrl);
+          // Use safeFetch with SSRF protection
+          const imgResponse = await safeFetch(referenceImageUrl, {}, 10000);
           if (imgResponse.ok) {
             const buffer = await imgResponse.arrayBuffer();
             referenceBase64 = {
@@ -113,7 +120,7 @@ export async function POST(request: NextRequest) {
           }
         }
       } catch (e) {
-        console.warn("Failed to get reference image:", e);
+        console.warn("Failed to get reference image (may be blocked by SSRF protection):", e);
       }
     }
 

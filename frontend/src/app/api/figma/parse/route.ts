@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
 
 const FIGMA_API = "https://api.figma.com/v1";
 const FIGMA_ACCESS_TOKEN = process.env.FIGMA_ACCESS_TOKEN;
@@ -267,6 +268,10 @@ function extractEditableNodes(
 }
 
 export async function POST(request: NextRequest) {
+  // Check authentication
+  const authError = requireAuth(request);
+  if (authError) return authError;
+
   try {
     const { url } = await request.json();
 

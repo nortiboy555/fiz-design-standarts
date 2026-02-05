@@ -5,8 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-const AUTH_KEY = "fiz-auth";
-
 interface AuthGateProps {
   children: ReactNode;
 }
@@ -17,9 +15,16 @@ export function AuthGate({ children }: AuthGateProps) {
   const [error, setError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Check if already authenticated via cookie
   useEffect(() => {
-    const stored = localStorage.getItem(AUTH_KEY);
-    setIsAuthenticated(stored === "true");
+    fetch("/api/auth", { method: "GET", credentials: "include" })
+      .then((res) => res.json())
+      .then((data) => {
+        setIsAuthenticated(data.authenticated === true);
+      })
+      .catch(() => {
+        setIsAuthenticated(false);
+      });
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -32,12 +37,12 @@ export function AuthGate({ children }: AuthGateProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
+        credentials: "include", // Important: include cookies
       });
 
       const data = await response.json();
 
       if (data.success) {
-        localStorage.setItem(AUTH_KEY, "true");
         setIsAuthenticated(true);
       } else {
         setError(true);

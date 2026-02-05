@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { uploadBuffer } from "@/lib/blob";
+import { requireAuth } from "@/lib/auth";
 
 const REMOVEBG_API_KEY = process.env.REMOVEBG_API_KEY;
 
 export async function POST(request: NextRequest) {
+  // Check authentication
+  const authError = requireAuth(request);
+  if (authError) return authError;
+
   if (!REMOVEBG_API_KEY) {
     return NextResponse.json(
       { error: "Remove.bg API key not configured" },

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
 
 const headlines = {
   pt: [
@@ -68,6 +69,9 @@ const headlines = {
 };
 
 export async function GET(request: NextRequest) {
+  const authError = requireAuth(request);
+  if (authError) return authError;
+
   const { searchParams } = new URL(request.url);
   const lang = (searchParams.get("lang") || "pt") as "pt" | "en";
   const offer = searchParams.get("offer");

@@ -3,8 +3,6 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface CompetitorData {
   fizPositioning: {
@@ -21,6 +19,7 @@ interface CompetitorData {
       name: string;
       positioning: string;
       strengths: string[];
+      weaknesses?: string[];
       fizAngle: string;
     };
   };
@@ -42,69 +41,69 @@ export default function CompetitorsPage() {
   }
 
   return (
-    <div className="max-w-7xl">
+    <div className="max-w-4xl">
       <PageHeader
-        title="Competitor Analysis"
-        description="Market positioning and FIZ differentiation angles"
+        title="Competitors"
+        description="Market positioning and differentiation"
       />
 
-      {/* FIZ Positioning */}
-      <section className="mb-10">
-        <h2 className="text-lg font-semibold mb-2">FIZ Positioning</h2>
-        <p className="text-sm text-muted-foreground mb-6">
-          Category: <span className="text-emerald-400 font-medium">{data.fizPositioning.category}</span>
-          <span className="text-muted-foreground/60"> (not "{data.fizPositioning.notCategory}")</span>
-        </p>
+      {/* FIZ Positioning - Compact */}
+      <div className="mb-8 p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+          <span className="text-sm font-medium text-emerald-400">FIZ Position</span>
+        </div>
+        <p className="text-lg font-semibold mb-2">{data.fizPositioning.category}</p>
+        <p className="text-xs text-muted-foreground mb-4">Not "{data.fizPositioning.notCategory}"</p>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="flex flex-wrap gap-2">
           {data.fizPositioning.differentiators.map((diff) => (
-            <Card key={diff.name} className="border-border/40">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">{diff.name}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-3">{diff.description}</p>
-                <p className="text-sm text-emerald-400 italic">"{diff.emotion}"</p>
-              </CardContent>
-            </Card>
+            <div key={diff.name} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-background/50 border border-border/40">
+              <span className="text-sm font-medium">{diff.name}</span>
+              <span className="text-xs text-muted-foreground">→ {diff.emotion}</span>
+            </div>
           ))}
         </div>
-      </section>
+      </div>
 
-      {/* Competitor Table */}
-      <section>
-        <h2 className="text-lg font-semibold mb-4">Competitor Comparison</h2>
-        <Card className="border-border/40 overflow-hidden">
-          <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-border/40">
-                <TableHead className="w-[140px]">Competitor</TableHead>
-                <TableHead className="max-w-[280px]">Positioning</TableHead>
-                <TableHead>Key Strengths</TableHead>
-                <TableHead className="w-[200px]">FIZ Angle</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {Object.values(data.competitors).map((comp) => (
-                <TableRow key={comp.name} className="border-border/40">
-                  <TableCell className="font-medium">{comp.name}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{comp.positioning}</TableCell>
-                  <TableCell>
-                    <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
-                      {comp.strengths.slice(0, 2).map((s, i) => (
-                        <li key={i}>{s}</li>
-                      ))}
-                    </ul>
-                  </TableCell>
-                  <TableCell className="text-sm text-indigo-400 font-medium">{comp.fizAngle}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+      {/* Competitors - Block List */}
+      <div className="space-y-3">
+        {Object.values(data.competitors).map((comp) => (
+          <div
+            key={comp.name}
+            className="p-4 rounded-lg border border-border/40 hover:border-border/60 transition-colors"
+          >
+            {/* Header Row */}
+            <div className="flex items-start justify-between gap-4 mb-3">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-base">{comp.name}</h3>
+                <p className="text-sm text-muted-foreground truncate">{comp.positioning}</p>
+              </div>
+            </div>
+
+            {/* Content Row */}
+            <div className="flex items-start gap-6">
+              {/* Strengths */}
+              <div className="flex-1">
+                <span className="text-xs text-muted-foreground/70 uppercase tracking-wide">Strengths</span>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {comp.strengths.map((s, i) => (
+                    <span key={i} className="text-xs px-2 py-0.5 rounded bg-muted/50 text-muted-foreground">
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* FIZ Angle */}
+              <div className="flex-1 max-w-[280px]">
+                <span className="text-xs text-indigo-400/70 uppercase tracking-wide">FIZ Angle</span>
+                <p className="mt-1 text-sm text-indigo-400">{comp.fizAngle}</p>
+              </div>
+            </div>
           </div>
-        </Card>
-      </section>
+        ))}
+      </div>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
 
 const testVariables = {
   hook: {
@@ -98,6 +99,9 @@ const prebuiltMatrices = [
   { id: "visual-focus", name: "Visual Focus", description: "Test visuals", variables: ["visual", "proof"], combinations: 9, estimated: "2-3 days" },
 ];
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authError = requireAuth(request);
+  if (authError) return authError;
+
   return NextResponse.json({ variables: testVariables, testOrder, sprintTemplate, kpiBenchmarks, prebuiltMatrices });
 }

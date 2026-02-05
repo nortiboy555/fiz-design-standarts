@@ -110,6 +110,7 @@ export default function PreviewPage() {
   const [showPopup, setShowPopup] = useState(false);
   const [popupImages, setPopupImages] = useState<string[]>([]);
   const [exportScale, setExportScale] = useState<1 | 2>(1);
+  const [exportFormat, setExportFormat] = useState<"png" | "jpg">("png");
   const [isRemovingBg, setIsRemovingBg] = useState(false);
 
   useEffect(() => {
@@ -796,15 +797,18 @@ export default function PreviewPage() {
       }
     }
 
+    const mimeType = exportFormat === "jpg" ? "image/jpeg" : "image/png";
+    const quality = exportFormat === "jpg" ? 0.92 : undefined;
+
     exportCanvas.toBlob((blob) => {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `fiz-${format.replace(":", "x")}@${exportScale}x.png`;
+      a.download = `fiz-${format.replace(":", "x")}@${exportScale}x.${exportFormat}`;
       a.click();
       URL.revokeObjectURL(url);
-    }, "image/png");
+    }, mimeType, quality);
   };
 
   const pictureNode = selectedPicture ? Object.values(selectedPicture.nodes)[0] : null;
@@ -1179,13 +1183,26 @@ export default function PreviewPage() {
                 </button>
               ))}
             </div>
+            <div className="flex items-center gap-2 bg-muted rounded-md p-1">
+              {(["png", "jpg"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setExportFormat(f)}
+                  className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                    exportFormat === f ? "bg-background shadow-sm" : "hover:bg-background/50"
+                  }`}
+                >
+                  {f.toUpperCase()}
+                </button>
+              ))}
+            </div>
             <Button onClick={async () => {
               for (const format of Object.keys(figmaTemplates)) {
                 await downloadPreview(format);
                 await new Promise((r) => setTimeout(r, 300));
               }
             }} disabled={Object.keys(figmaTemplates).length === 0}>
-              Download All PNG
+              Download All
             </Button>
           </div>
         </div>
