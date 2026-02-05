@@ -65,6 +65,12 @@ interface SharedPicture {
   nodes: Record<string, FigmaNode>;
 }
 
+interface SharedOtherText {
+  name: string;
+  defaultValue: string;
+  nodes: Record<string, FigmaNode>;
+}
+
 const formatSpecs: Record<string, { width: number; height: number; ratio: string; name: string; previewHeight: number }> = {
   "9:16": { width: 1080, height: 1920, ratio: "9:16", name: "Story/Reels", previewHeight: 280 },
   "4:5": { width: 1080, height: 1350, ratio: "4:5", name: "Feed", previewHeight: 240 },
@@ -112,6 +118,9 @@ export default function PreviewPage() {
   const [exportScale, setExportScale] = useState<1 | 2>(1);
   const [exportFormat, setExportFormat] = useState<"png" | "jpg">("png");
   const [isRemovingBg, setIsRemovingBg] = useState(false);
+  const [sharedOtherTexts, setSharedOtherTexts] = useState<SharedOtherText[]>([]);
+  const [otherTexts, setOtherTexts] = useState<Record<string, string>>({});
+  const [settingsTab, setSettingsTab] = useState<"main" | "other" | "bg" | "pictures">("main");
   const [removeBgCredits, setRemoveBgCredits] = useState<{ total: number; freeCalls: number } | null>(null);
 
   useEffect(() => {
@@ -168,6 +177,33 @@ export default function PreviewPage() {
     return shared;
   }, []);
 
+  // Find shared non-role TEXT nodes across formats
+  const findSharedOtherTexts = useCallback((templates: Record<string, FigmaFrame>) => {
+    const loadedFormats = Object.entries(templates).filter(([, t]) => t && t.nodes);
+    if (loadedFormats.length < 2) return [];
+
+    const textsByName: Record<string, { defaultValue: string; nodes: Record<string, FigmaNode> }> = {};
+
+    for (const [format, template] of loadedFormats) {
+      const otherTextNodes = template.nodes.filter((n) => n.nodeType === "TEXT" && !n.role);
+      for (const node of otherTextNodes) {
+        const name = node.nodeName.toLowerCase();
+        if (!textsByName[name]) textsByName[name] = { defaultValue: node.defaultValue || "", nodes: {} };
+        textsByName[name].nodes[format] = node;
+      }
+    }
+
+    const formatCount = loadedFormats.length;
+    const shared: SharedOtherText[] = [];
+    for (const [, data] of Object.entries(textsByName)) {
+      if (Object.keys(data.nodes).length >= formatCount) {
+        const firstNode = Object.values(data.nodes)[0];
+        shared.push({ name: firstNode.nodeName, defaultValue: data.defaultValue, nodes: data.nodes });
+      }
+    }
+    return shared;
+  }, []);
+
   // Upload image from URL to Vercel Blob
   const uploadUrlToBlob = async (imageUrl: string, filename: string): Promise<string> => {
     const response = await fetch("/api/upload-url", {
@@ -201,6 +237,12 @@ export default function PreviewPage() {
 
       const shared = findSharedPictures(templates);
       setSharedPictures(shared);
+
+      const sharedTexts = findSharedOtherTexts(templates);
+      setSharedOtherTexts(sharedTexts);
+      const initialOtherTexts: Record<string, string> = {};
+      for (const st of sharedTexts) initialOtherTexts[st.name] = "";
+      setOtherTexts(initialOtherTexts);
 
       // Initialize variants for ALL shared pictures
       if (shared.length > 0) {
@@ -248,7 +290,7 @@ export default function PreviewPage() {
 
       // Set templates AFTER uploading images (with updated Blob URLs)
       setFigmaTemplates(templates);
-      setImportStatus(`Imported ${Object.keys(templates).length} templates, ${shared.length} shared picture(s): ${shared.map(p => p.name).join(", ")}`);
+      setImportStatus(`Imported ${Object.keys(templates).length} templates, ${shared.length} shared picture(s)${sharedTexts.length > 0 ? `, ${sharedTexts.length} shared text(s)` : ""}`);
     } catch (error) {
       setImportStatus(`Error: ${error instanceof Error ? error.message : "Failed to import"}`);
     } finally {
@@ -366,6 +408,7 @@ export default function PreviewPage() {
         if (node.role === "headline" && copy.headline) textValue = copy.headline;
         else if (node.role === "subhead" && copy.subhead) textValue = copy.subhead;
         else if (node.role === "cta" && copy.cta) textValue = copy.cta;
+        else if (!node.role && otherTexts[node.nodeName]) textValue = otherTexts[node.nodeName];
 
         if (!textValue) continue;
 
@@ -400,11 +443,11 @@ export default function PreviewPage() {
         ctx.globalAlpha = 1;
       }
     }
-  }, [figmaTemplates, copy, bgColor, bgType, bgVariants, bgCurrentIndex, generatedImages, loadImage, wrapText]);
+  }, [figmaTemplates, copy, bgColor, bgType, bgVariants, bgCurrentIndex, generatedImages, otherTexts, loadImage, wrapText]);
 
   useEffect(() => {
     Object.keys(figmaTemplates).forEach((format) => renderCanvas(format));
-  }, [figmaTemplates, copy, bgColor, bgType, bgVariants, bgCurrentIndex, generatedImages, renderCanvas]);
+  }, [figmaTemplates, copy, bgColor, bgType, bgVariants, bgCurrentIndex, generatedImages, otherTexts, renderCanvas]);
 
   // Get current picture data
   const selectedPicture = sharedPictures.find((p) => p.name === selectedPictureName);
@@ -801,6 +844,7 @@ export default function PreviewPage() {
         if (node.role === "headline" && copy.headline) textValue = copy.headline;
         else if (node.role === "subhead" && copy.subhead) textValue = copy.subhead;
         else if (node.role === "cta" && copy.cta) textValue = copy.cta;
+        else if (!node.role && otherTexts[node.nodeName]) textValue = otherTexts[node.nodeName];
         if (!textValue) continue;
 
         if (node.textCase === "UPPER") textValue = textValue.toUpperCase();
@@ -853,6 +897,10 @@ export default function PreviewPage() {
     setCurrentIndexPerPicture({});
     setGeneratedImages({});
     setPromptPerPicture({});
+    // Reset other texts
+    setSharedOtherTexts([]);
+    setOtherTexts({});
+    setSettingsTab("main");
     // Reset background
     setBgType("color");
     setBgVariants([]);
@@ -906,154 +954,203 @@ export default function PreviewPage() {
         {/* Settings Panel */}
         <Card className="border-border/40">
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Settings</CardTitle>
-              <div className="flex gap-1 bg-muted rounded-md p-0.5">
-                {["pt", "en"].map((l) => (
-                  <button key={l} onClick={() => setLang(l as "pt" | "en")}
-                    className={`px-2 py-1 rounded text-xs font-medium transition-colors ${lang === l ? "bg-background shadow-sm" : "hover:bg-background/50"}`}>
-                    {l.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <CardTitle className="text-base">Settings</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-5">
-            <Tabs value={mode} onValueChange={(v) => setMode(v as "manual" | "library")}>
-              <TabsList className="w-full">
-                <TabsTrigger value="library" className="flex-1">Library</TabsTrigger>
-                <TabsTrigger value="manual" className="flex-1">Manual</TabsTrigger>
-              </TabsList>
+          <CardContent className="space-y-4">
+            {/* Settings tab switcher */}
+            <div className="flex gap-1 bg-muted rounded-md p-0.5">
+              {([
+                { key: "main" as const, label: "Main Text", show: true },
+                { key: "other" as const, label: "Other Text", show: sharedOtherTexts.length > 0 },
+                { key: "bg" as const, label: "Background", show: true },
+                { key: "pictures" as const, label: "Pictures", show: sharedPictures.length > 0 },
+              ]).filter((t) => t.show).map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setSettingsTab(t.key)}
+                  className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+                    settingsTab === t.key ? "bg-background shadow-sm" : "hover:bg-background/50"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
 
-              <TabsContent value="library" className="space-y-4 mt-4">
-                {[{ label: "Headline", field: "headline" as const, data: headlines },
-                  { label: "Subhead", field: "subhead" as const, data: subheads },
-                  { label: "CTA", field: "cta" as const, data: ctas }].map((item) => (
-                  <div key={item.field} className="space-y-2">
-                    <Label>{item.label}</Label>
-                    <div className="flex gap-2">
-                      <select className="flex-1 min-w-0 h-9 rounded-md border border-input bg-background px-3 text-sm truncate"
-                        value={copy[item.field]} onChange={(e) => setCopy((prev) => ({ ...prev, [item.field]: e.target.value }))}>
-                        <option value="">Select...</option>
-                        {item.data.map((d, i) => <option key={i} value={d.text}>{d.text.substring(0, 35)}...</option>)}
-                      </select>
-                      <Button variant="outline" size="sm" className="shrink-0" onClick={() => randomize(item.field)}>Rnd</Button>
+            {/* Main Text tab */}
+            {settingsTab === "main" && (
+              <Tabs value={mode} onValueChange={(v) => setMode(v as "manual" | "library")}>
+                <TabsList className="w-full">
+                  <TabsTrigger value="library" className="flex-1">Library</TabsTrigger>
+                  <TabsTrigger value="manual" className="flex-1">Manual</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="library" className="space-y-4 mt-4">
+                  <div className="flex justify-end">
+                    <div className="flex gap-1 bg-muted rounded-md p-0.5">
+                      {["pt", "en"].map((l) => (
+                        <button key={l} onClick={() => setLang(l as "pt" | "en")}
+                          className={`px-2 py-1 rounded text-xs font-medium transition-colors ${lang === l ? "bg-background shadow-sm" : "hover:bg-background/50"}`}>
+                          {l.toUpperCase()}
+                        </button>
+                      ))}
                     </div>
                   </div>
-                ))}
-                <Button onClick={randomizeAll} className="w-full">Random All</Button>
-              </TabsContent>
-
-              <TabsContent value="manual" className="space-y-4 mt-4">
-                <div className="space-y-2"><Label>Headline</Label>
-                  <Input value={copy.headline} onChange={(e) => setCopy((prev) => ({ ...prev, headline: e.target.value }))} placeholder="Main headline..." /></div>
-                <div className="space-y-2"><Label>Subhead</Label>
-                  <Input value={copy.subhead} onChange={(e) => setCopy((prev) => ({ ...prev, subhead: e.target.value }))} placeholder="Subheadline..." /></div>
-                <div className="space-y-2"><Label>CTA</Label>
-                  <Input value={copy.cta} onChange={(e) => setCopy((prev) => ({ ...prev, cta: e.target.value }))} placeholder="Call to action..." /></div>
-              </TabsContent>
-            </Tabs>
-
-            {/* Background Color/Image */}
-            <div className="space-y-3 pt-4 border-t border-border/40">
-              <Label>Background</Label>
-
-              {/* Type Switcher */}
-              <div className="flex gap-1 bg-muted rounded-md p-0.5">
-                <button
-                  onClick={() => setBgType("color")}
-                  className={`flex-1 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                    bgType === "color" ? "bg-background shadow-sm" : "hover:bg-background/50"
-                  }`}
-                >
-                  Color
-                </button>
-                <button
-                  onClick={() => setBgType("image")}
-                  className={`flex-1 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                    bgType === "image" ? "bg-background shadow-sm" : "hover:bg-background/50"
-                  }`}
-                >
-                  Image
-                </button>
-              </div>
-
-              {bgType === "color" ? (
-                <div className="flex gap-2">
-                  <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="w-10 h-9 rounded border border-input cursor-pointer" />
-                  <Input value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="flex-1" />
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {/* Variants Carousel */}
-                  {bgVariants.length > 0 && (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" disabled={bgCurrentIndex === 0} onClick={() => navigateBgCarousel(-1)}>&lt;</Button>
-                        <div className="flex-1 h-20 rounded-lg border border-border/40 overflow-hidden bg-muted/30 flex items-center justify-center">
-                          {currentBgVariant?.dataUrl ? (
-                            <img src={currentBgVariant.dataUrl} alt={currentBgVariant.label} className="max-h-full max-w-full object-contain" />
-                          ) : (
-                            <span className="text-xs text-muted-foreground">No image</span>
-                          )}
-                        </div>
-                        <Button variant="outline" size="sm" disabled={bgCurrentIndex === bgVariants.length - 1} onClick={() => navigateBgCarousel(1)}>&gt;</Button>
+                  {[{ label: "Headline", field: "headline" as const, data: headlines },
+                    { label: "Subhead", field: "subhead" as const, data: subheads },
+                    { label: "CTA", field: "cta" as const, data: ctas }].map((item) => (
+                    <div key={item.field} className="space-y-2">
+                      <Label>{item.label}</Label>
+                      <div className="flex gap-2">
+                        <select className="flex-1 min-w-0 h-9 rounded-md border border-input bg-background px-3 text-sm truncate"
+                          value={copy[item.field]} onChange={(e) => setCopy((prev) => ({ ...prev, [item.field]: e.target.value }))}>
+                          <option value="">Select...</option>
+                          {item.data.map((d, i) => <option key={i} value={d.text}>{d.text.substring(0, 35)}...</option>)}
+                        </select>
+                        <Button variant="outline" size="sm" className="shrink-0" onClick={() => randomize(item.field)}>Rnd</Button>
                       </div>
+                    </div>
+                  ))}
+                  <Button onClick={randomizeAll} className="w-full">Random All</Button>
+                </TabsContent>
 
-                      {/* Carousel Indicator */}
-                      <div className="flex justify-center gap-1">
-                        {bgVariants.map((v, i) => (
-                          <button
-                            key={i}
-                            onClick={() => {
-                              setBgCurrentIndex(i);
-                              setBgPrompt(v.prompt || "");
-                            }}
-                            className={`w-2 h-2 rounded-full transition-colors ${i === bgCurrentIndex ? "bg-indigo-500" : "bg-emerald-500/50"}`}
-                          />
-                        ))}
-                      </div>
-                    </>
-                  )}
+                <TabsContent value="manual" className="space-y-4 mt-4">
+                  <div className="space-y-2"><Label>Headline</Label>
+                    <Input value={copy.headline} onChange={(e) => setCopy((prev) => ({ ...prev, headline: e.target.value }))} placeholder="Main headline..." /></div>
+                  <div className="space-y-2"><Label>Subhead</Label>
+                    <Input value={copy.subhead} onChange={(e) => setCopy((prev) => ({ ...prev, subhead: e.target.value }))} placeholder="Subheadline..." /></div>
+                  <div className="space-y-2"><Label>CTA</Label>
+                    <Input value={copy.cta} onChange={(e) => setCopy((prev) => ({ ...prev, cta: e.target.value }))} placeholder="Call to action..." /></div>
+                </TabsContent>
+              </Tabs>
+            )}
 
-                  {/* Prompt */}
-                  <Textarea
-                    value={bgPrompt}
-                    onChange={(e) => setBgPrompt(e.target.value)}
-                    placeholder="Describe background to generate...&#10;&#10;Example: Abstract gradient purple and blue"
-                    rows={3}
-                    className="text-sm"
-                  />
-
-                  {/* Options */}
-                  <div className="flex items-center justify-end gap-2">
-                    <Label className="text-xs">Variants:</Label>
-                    <Select value={bgVariantCount} onValueChange={setBgVariantCount}>
-                      <SelectTrigger className="w-16 h-8"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {["1", "2", "3", "4"].map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+            {/* Other Text tab */}
+            {settingsTab === "other" && (
+              <div className="space-y-4">
+                {sharedOtherTexts.map((st) => (
+                  <div key={st.name} className="space-y-2">
+                    <Label>{st.name} <span className="text-muted-foreground font-normal text-xs">({st.defaultValue.substring(0, 30)}{st.defaultValue.length > 30 ? "..." : ""})</span></Label>
+                    <Input
+                      value={otherTexts[st.name] || ""}
+                      onChange={(e) => setOtherTexts((prev) => ({ ...prev, [st.name]: e.target.value }))}
+                      placeholder={st.defaultValue}
+                    />
                   </div>
+                ))}
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    const reset: Record<string, string> = {};
+                    for (const st of sharedOtherTexts) reset[st.name] = "";
+                    setOtherTexts(reset);
+                  }}
+                >
+                  Reset to Defaults
+                </Button>
+              </div>
+            )}
 
-                  <Button onClick={handleGenerateBgImages} disabled={isGeneratingBg || !bgPrompt.trim()} variant="secondary" className="w-full">
-                    {isGeneratingBg ? "Generating..." : "Generate Background"}
-                  </Button>
+            {/* Background tab */}
+            {settingsTab === "bg" && (
+              <div className="space-y-3">
+                {/* Color / Image Switcher */}
+                <div className="flex gap-1 bg-muted rounded-md p-0.5">
+                  <button
+                    onClick={() => setBgType("color")}
+                    className={`flex-1 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                      bgType === "color" ? "bg-background shadow-sm" : "hover:bg-background/50"
+                    }`}
+                  >
+                    Color
+                  </button>
+                  <button
+                    onClick={() => setBgType("image")}
+                    className={`flex-1 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                      bgType === "image" ? "bg-background shadow-sm" : "hover:bg-background/50"
+                    }`}
+                  >
+                    Image
+                  </button>
                 </div>
-              )}
-            </div>
 
-            {/* Picture (Gemini AI) - показываем только если есть shared pictures */}
-            {sharedPictures.length > 0 && (
-              <div className="space-y-3 pt-4 border-t border-border/40">
-                <div className="flex items-center justify-between">
-                  <Label>Picture (Gemini AI)</Label>
-                  {sharedPictures.length > 1 && (
+                {bgType === "color" ? (
+                  <div className="flex gap-2">
+                    <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="w-10 h-9 rounded border border-input cursor-pointer" />
+                    <Input value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="flex-1" />
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {/* Variants Carousel */}
+                    {bgVariants.length > 0 && (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm" disabled={bgCurrentIndex === 0} onClick={() => navigateBgCarousel(-1)}>&lt;</Button>
+                          <div className="flex-1 h-20 rounded-lg border border-border/40 overflow-hidden bg-muted/30 flex items-center justify-center">
+                            {currentBgVariant?.dataUrl ? (
+                              <img src={currentBgVariant.dataUrl} alt={currentBgVariant.label} className="max-h-full max-w-full object-contain" />
+                            ) : (
+                              <span className="text-xs text-muted-foreground">No image</span>
+                            )}
+                          </div>
+                          <Button variant="outline" size="sm" disabled={bgCurrentIndex === bgVariants.length - 1} onClick={() => navigateBgCarousel(1)}>&gt;</Button>
+                        </div>
+
+                        {/* Carousel Indicator */}
+                        <div className="flex justify-center gap-1">
+                          {bgVariants.map((v, i) => (
+                            <button
+                              key={i}
+                              onClick={() => {
+                                setBgCurrentIndex(i);
+                                setBgPrompt(v.prompt || "");
+                              }}
+                              className={`w-2 h-2 rounded-full transition-colors ${i === bgCurrentIndex ? "bg-indigo-500" : "bg-emerald-500/50"}`}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    {/* Prompt */}
+                    <Textarea
+                      value={bgPrompt}
+                      onChange={(e) => setBgPrompt(e.target.value)}
+                      placeholder="Describe background to generate...&#10;&#10;Example: Abstract gradient purple and blue"
+                      rows={3}
+                      className="text-sm"
+                    />
+
+                    {/* Options */}
+                    <div className="flex items-center justify-end gap-2">
+                      <Label className="text-xs">Variants:</Label>
+                      <Select value={bgVariantCount} onValueChange={setBgVariantCount}>
+                        <SelectTrigger className="w-16 h-8"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {["1", "2", "3", "4"].map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <Button onClick={handleGenerateBgImages} disabled={isGeneratingBg || !bgPrompt.trim()} variant="secondary" className="w-full">
+                      {isGeneratingBg ? "Generating..." : "Generate Background"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Pictures tab */}
+            {settingsTab === "pictures" && sharedPictures.length > 0 && (
+              <div className="space-y-3">
+                {sharedPictures.length > 1 && (
+                  <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">{sharedPictures.length} pictures</span>
-                  )}
-                </div>
+                  </div>
+                )}
 
-                {/* Picture Selector - показываем если больше одной картинки */}
+                {/* Picture Selector */}
                 {sharedPictures.length > 1 && (
                   <div className="flex gap-1 bg-muted rounded-md p-1">
                     {sharedPictures.map((pic) => (
@@ -1115,7 +1212,6 @@ export default function PreviewPage() {
                     <button key={i} onClick={() => {
                       if (!selectedPictureName) return;
                       setCurrentIndexPerPicture((prev) => ({ ...prev, [selectedPictureName]: i }));
-                      // Update prompt to show this variant's prompt
                       setPromptPerPicture((prev) => ({
                         ...prev,
                         [selectedPictureName]: v.prompt || "",
@@ -1135,7 +1231,6 @@ export default function PreviewPage() {
                     />
                   ))}
                 </div>
-
 
                 {/* Prompt */}
                 <Textarea
