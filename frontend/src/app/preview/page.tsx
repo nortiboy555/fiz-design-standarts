@@ -112,6 +112,7 @@ export default function PreviewPage() {
   const [exportScale, setExportScale] = useState<1 | 2>(1);
   const [exportFormat, setExportFormat] = useState<"png" | "jpg">("png");
   const [isRemovingBg, setIsRemovingBg] = useState(false);
+  const [removeBgCredits, setRemoveBgCredits] = useState<{ total: number; freeCalls: number } | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -124,6 +125,22 @@ export default function PreviewPage() {
       setCtas(c);
     });
   }, [lang]);
+
+  // Fetch Remove.bg credits on mount
+  useEffect(() => {
+    api.get<{ success: boolean; credits: { total: number }; api?: { freeCalls: number } }>("/remove-bg/account")
+      .then((data) => {
+        if (data.success) {
+          setRemoveBgCredits({
+            total: data.credits?.total ?? 0,
+            freeCalls: data.api?.freeCalls ?? 0,
+          });
+        }
+      })
+      .catch(() => {
+        // Silently fail - credits will show as null
+      });
+  }, []);
 
   // Find shared IMAGE nodes across formats
   const findSharedPictures = useCallback((templates: Record<string, FigmaFrame>) => {
@@ -600,6 +617,18 @@ export default function PreviewPage() {
           [selectedPictureName]: variants.length,
         }));
         setGeneratedImages((prev) => ({ ...prev, [selectedPictureName]: data.url }));
+
+        // Refresh credits after successful removal
+        api.get<{ success: boolean; credits: { total: number }; api?: { freeCalls: number } }>("/remove-bg/account")
+          .then((creditsData) => {
+            if (creditsData.success) {
+              setRemoveBgCredits({
+                total: creditsData.credits?.total ?? 0,
+                freeCalls: creditsData.api?.freeCalls ?? 0,
+              });
+            }
+          })
+          .catch(() => {});
       }
     } catch (error) {
       console.error("Remove BG error:", error);
@@ -1048,15 +1077,22 @@ export default function PreviewPage() {
                     <p className="text-xs text-muted-foreground">
                       Figma size: <span className="text-indigo-400">{Math.round(pictureNode.width)}×{Math.round(pictureNode.height)}</span>
                     </p>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleRemoveBg}
-                      disabled={isRemovingBg || !currentVariant?.dataUrl}
-                      className="text-xs h-6 px-2"
-                    >
-                      {isRemovingBg ? "Removing..." : "Remove BG"}
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleRemoveBg}
+                        disabled={isRemovingBg || !currentVariant?.dataUrl || (removeBgCredits !== null && removeBgCredits.total === 0 && removeBgCredits.freeCalls === 0)}
+                        className="text-xs h-6 px-2"
+                      >
+                        {isRemovingBg ? "Removing..." : "Remove BG"}
+                      </Button>
+                      {removeBgCredits !== null && (
+                        <span className={`text-xs ${(removeBgCredits.freeCalls > 0 || removeBgCredits.total > 0) ? "text-emerald-400" : "text-red-400"}`}>
+                          ({removeBgCredits.freeCalls > 0 ? String(removeBgCredits.freeCalls) : String(removeBgCredits.total)})
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
 
