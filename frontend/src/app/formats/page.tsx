@@ -169,6 +169,15 @@ ${[
 <p style="font-size:12px;color:#666;">Use <code>\\n</code> in text input for forced line breaks. Works in headline, subhead, CTA, and other text fields.</p>
 <div class="tree" style="font-size:11px;">First line<span style="color:#b58900;font-weight:bold;">\\n</span>Second line<span style="color:#b58900;font-weight:bold;">\\n</span>Third line</div>
 
+<h2>Locked Layers</h2>
+<p style="font-size:12px;color:#666;">Lock any layer in Figma (<kbd>Ctrl/Cmd + Shift + L</kbd>) to protect it from editing in Preview.</p>
+<table>
+<tr><th>Layer Type</th><th>When Locked</th></tr>
+<tr><td><strong>TEXT</strong></td><td>Renders with original Figma text. Not affected by copy substitution or Other Text editing.</td></tr>
+<tr><td><strong>IMAGE</strong></td><td>Renders with original Figma image. Not available for AI generation or Remove.bg.</td></tr>
+<tr><td><strong>Unlocked</strong></td><td>Fully editable — text substitution, AI generation, shared detection all work.</td></tr>
+</table>
+
 <h2>Extracted Text Properties</h2>
 <div class="props">
 ${["fontSize","fontFamily","fontWeight","fontStyle","textAlign","textAlignVertical","lineHeight","letterSpacing","paragraphSpacing","textCase","textDecoration","color","opacity"].map(p => `<span class="prop">${p}</span>`).join("")}
@@ -179,6 +188,7 @@ ${["fontSize","fontFamily","fontWeight","fontStyle","textAlign","textAlignVertic
 <div class="tip">Use the same layer names across all format pages for shared picture detection.</div>
 <div class="tip">Keep the "Actual" frame as a direct child of the page — nested sections may not be found.</div>
 <div class="tip">For multi-line text, use <code>\\n</code> in text inputs or set auto-resize to "Height" in Figma to preserve wrapping.</div>
+<div class="tip">Lock layers in Figma to protect them from editing in Preview — locked text and images stay as-is.</div>
 <div class="tip">Decorative text that shouldn't be swapped — name it anything except Headline, Subhead, or CTA.</div>
 <div class="tip">Prefer <strong>Google Fonts</strong> in Figma — they render reliably across all browsers.</div>
 <div class="tip">Background colors come from the Actual frame's fill, not from a background rectangle inside it.</div>
@@ -655,6 +665,39 @@ ${["fontSize","fontFamily","fontWeight","fontStyle","textAlign","textAlignVertic
               </Card>
             </div>
 
+            {/* Locked Layers */}
+            <Card className="border-border/40">
+              <CardContent className="p-6">
+                <h4 className="font-semibold mb-4">Locked Layers</h4>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Lock any layer in Figma (<kbd className="bg-muted px-1.5 py-0.5 rounded text-xs border border-border/30">Ctrl/Cmd + Shift + L</kbd>) to protect it from editing in Preview.
+                </p>
+                <div className="space-y-3">
+                  <div className="p-3 rounded-lg border border-border/30 bg-muted/20">
+                    <div className="flex items-center gap-2 mb-1">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                      <span className="text-sm font-bold text-amber-400">Locked TEXT</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Renders with original Figma text. Not affected by copy substitution (Main Text) or Other Text editing. Excluded from shared text detection.</p>
+                  </div>
+                  <div className="p-3 rounded-lg border border-border/30 bg-muted/20">
+                    <div className="flex items-center gap-2 mb-1">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                      <span className="text-sm font-bold text-amber-400">Locked IMAGE</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Renders with original Figma image. Not available for Gemini AI generation or Remove.bg. Excluded from shared pictures detection.</p>
+                  </div>
+                  <div className="p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5">
+                    <div className="flex items-center gap-2 mb-1">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9 1"/></svg>
+                      <span className="text-sm font-bold text-emerald-400">Unlocked (default)</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Fully editable in Preview — text substitution, AI image generation, and shared detection all work normally.</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Extracted Properties */}
             <Card className="border-border/40">
               <CardContent className="p-6">
@@ -687,6 +730,7 @@ ${["fontSize","fontFamily","fontWeight","fontStyle","textAlign","textAlignVertic
                     "Keep the \"Actual\" frame as a direct child of the page — nested sections may not be found.",
                     "For forced line breaks in text, use \\n in the input field. Auto-wrapping uses the node width from Figma.",
                     "Prefer Google Fonts in Figma — they render reliably across all browsers. Inter is always available as fallback.",
+                    "Lock layers in Figma to protect them from editing in Preview — locked text and images stay as-is.",
                     "Decorative text that shouldn't be swapped from the library — name it anything except Headline, Subhead, or CTA.",
                     "Background colors come from the Actual frame's fill, not from a background rectangle inside it.",
                     "Fallback: if no page names match, the parser scans all frames by pixel dimensions (±50px tolerance).",
