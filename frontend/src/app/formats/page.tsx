@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface FormatData {
@@ -41,6 +43,137 @@ export default function FormatsPage() {
 
   const formats = Object.values(data.formats);
 
+  const exportToPdf = () => {
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Figma Template Guide — FIZ Creative Hub</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1a1a1a; padding: 40px 50px; line-height: 1.6; max-width: 800px; margin: 0 auto; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  h1 + p { color: #666; font-size: 13px; margin-bottom: 28px; }
+  h2 { font-size: 16px; margin: 28px 0 12px; padding-bottom: 6px; border-bottom: 2px solid #e5e5e5; }
+  h3 { font-size: 13px; font-weight: 600; margin: 16px 0 6px; }
+  .tree { background: #f8f8f8; border: 1px solid #e0e0e0; border-radius: 6px; padding: 16px 20px; font-family: "SF Mono", "Fira Code", monospace; font-size: 12px; line-height: 1.8; margin-bottom: 8px; }
+  .tree .comment { color: #888; }
+  .tree .file { color: #5b5fc7; font-weight: 600; }
+  .tree .page { color: #b58900; font-weight: 600; }
+  .tree .frame { color: #2aa198; font-weight: 700; }
+  .tree .text { color: #268bd2; }
+  .tree .image { color: #8b5cf6; }
+  .tree .shape { color: #d97706; }
+  .tree .badge { background: #e8e8e8; border-radius: 3px; padding: 1px 5px; font-size: 10px; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 8px 0; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid #e5e5e5; }
+  th { font-weight: 600; background: #f5f5f5; font-size: 12px; }
+  td code { background: #f0f0f0; padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .card { border: 1px solid #e0e0e0; border-radius: 6px; padding: 16px; }
+  .card h3 { margin-top: 0; }
+  .numbered { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+  .num { width: 22px; height: 22px; border-radius: 4px; background: #e6f7f0; color: #2aa198; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .numbered .label { font-weight: 600; font-size: 13px; }
+  .numbered .desc { color: #666; font-size: 11px; }
+  .props { display: flex; flex-wrap: wrap; gap: 6px; }
+  .prop { background: #f0f0f0; border: 1px solid #e0e0e0; border-radius: 4px; padding: 2px 8px; font-family: monospace; font-size: 11px; }
+  .tip { display: flex; gap: 8px; margin-bottom: 6px; font-size: 12px; color: #555; }
+  .tip::before { content: "•"; color: #b58900; font-weight: bold; flex-shrink: 0; }
+  .tips-box { background: #fffbf0; border: 1px solid #f0d88a; border-radius: 6px; padding: 16px; }
+  .tips-box h3 { color: #b58900; margin-top: 0; }
+  @media print { body { padding: 20px; } }
+</style></head><body>
+<h1>Figma Template Guide</h1>
+<p>How to prepare a Figma file for import into FIZ Creative Preview</p>
+
+<div style="background:#f0f4ff;border:1px solid #c7d2fe;border-radius:6px;padding:14px 18px;margin-bottom:24px;display:flex;align-items:center;gap:12px;">
+<div style="font-size:20px;">&#128196;</div>
+<div><strong style="font-size:13px;">Figma Template</strong><br/><a href="https://www.figma.com/design/vvDS2E1m0KEan9ZcK9ngo8/FIZ-ADS1?t=OrqxhFMYMDPac0bX-1" style="color:#5b5fc7;font-size:12px;word-break:break-all;">Open FIZ-ADS1 in Figma</a> — duplicate to your project and use as a starting template.</div>
+</div>
+
+<h2>Required File Structure</h2>
+<div class="tree">
+<div class="comment"># Figma File</div>
+<div><span class="file">File</span> "My Ad Designs"</div>
+${[
+  { page: "1080×1920", format: "9:16", size: "1080×1920", prefix: "├──" },
+  { page: "1080x1350", format: "4:5", size: "1080×1350", prefix: "├──" },
+  { page: "1080×1080", format: "1:1", size: "1080×1080", prefix: "├──" },
+  { page: "1920×1080", format: "16:9", size: "1920×1080", prefix: "└──" },
+].map(p => `<div>${p.prefix} <span class="page">Page</span> "${p.page}" <span class="badge">${p.format}</span></div>
+<div>&nbsp;&nbsp;&nbsp;&nbsp;└── <span class="frame">Frame</span> "Actual" (${p.size})</div>
+<div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <span class="text">TEXT</span> "Headline" <span class="badge">headline</span></div>
+<div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <span class="text">TEXT</span> "Subhead" <span class="badge">subhead</span></div>
+<div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <span class="text">TEXT</span> "CTA" <span class="badge">cta</span></div>
+<div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <span class="image">IMAGE</span> "Picture"</div>
+<div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <span class="image">IMAGE</span> "LOGO"</div>
+<div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── <span class="shape">SHAPE</span> "Button BG"</div>`).join("\n")}
+</div>
+
+<h2>Page Naming Convention</h2>
+<table>
+<tr><th>Format</th><th>Accepted Keywords (case-insensitive)</th></tr>
+<tr><td><strong>9:16</strong></td><td><code>1080x1920</code> <code>9:16</code> <code>story</code> <code>reels</code></td></tr>
+<tr><td><strong>4:5</strong></td><td><code>1080x1350</code> <code>4:5</code> <code>feed</code></td></tr>
+<tr><td><strong>1:1</strong></td><td><code>1080x1080</code> <code>1:1</code> <code>square</code></td></tr>
+<tr><td><strong>16:9</strong></td><td><code>1920x1080</code> <code>16:9</code> <code>landscape</code></td></tr>
+</table>
+
+<div class="grid" style="margin-top:24px;">
+<div class="card">
+<h3>The "Actual" Frame</h3>
+<p style="color:#666;font-size:12px;margin-bottom:12px;">Inside each page, place a frame named <strong>Actual</strong> (case-insensitive).</p>
+<div class="numbered"><div class="num">1</div><div><div class="label">Frame, Component, or Group</div><div class="desc">Other types (sections) are skipped</div></div></div>
+<div class="numbered"><div class="num">2</div><div><div class="label">Size within ±50px tolerance</div><div class="desc">e.g. 1080×1920 for 9:16</div></div></div>
+<div class="numbered"><div class="num">3</div><div><div class="label">BG color from solid fill</div><div class="desc">First SOLID fill → canvas background</div></div></div>
+<div class="numbered"><div class="num">4</div><div><div class="label">Children → editable nodes</div><div class="desc">TEXT, IMAGE, SHAPE parsed recursively</div></div></div>
+</div>
+
+<div class="card">
+<h3>Text Layer Roles</h3>
+<p style="color:#666;font-size:12px;margin-bottom:12px;">Name layers exactly for auto-role assignment.</p>
+<table>
+<tr><th>Layer Name</th><th>Role</th><th>Behavior</th></tr>
+<tr><td><code>Headline</code></td><td>headline</td><td>Connected to headline library</td></tr>
+<tr><td><code>Subhead</code></td><td>subhead</td><td>Also accepts "Subheadline"</td></tr>
+<tr><td><code>CTA</code></td><td>cta</td><td>Connected to CTA library</td></tr>
+<tr><td><em>Any other</em></td><td>—</td><td>Rendered as-is, no substitution</td></tr>
+</table>
+</div>
+</div>
+
+<h2>Image & Shape Layers</h2>
+<table>
+<tr><th>Type</th><th>Detection</th><th>Behavior</th></tr>
+<tr><td><strong>IMAGE</strong></td><td>Rectangle / Frame with image fill</td><td>Exported PNG @2x. Editable with Gemini AI + Remove.bg</td></tr>
+<tr><td><strong>SHAPE</strong></td><td>Vector, Ellipse, Line, Polygon, etc.</td><td>Exported PNG @2x. Static overlay on canvas</td></tr>
+<tr><td><strong>SHARED</strong></td><td>Same name across format pages</td><td>Edit once in Preview → updates all formats</td></tr>
+</table>
+
+<h2>Extracted Text Properties</h2>
+<div class="props">
+${["fontSize","fontFamily","fontWeight","fontStyle","textAlign","textAlignVertical","lineHeight","letterSpacing","paragraphSpacing","textCase","textDecoration","color","opacity"].map(p => `<span class="prop">${p}</span>`).join("")}
+</div>
+
+<div class="tips-box" style="margin-top:24px;">
+<h3>Tips for Best Results</h3>
+<div class="tip">Use the same layer names across all format pages for shared picture detection.</div>
+<div class="tip">Keep the "Actual" frame as a direct child of the page — nested sections may not be found.</div>
+<div class="tip">For multi-line text, set auto-resize to "Height" (not "Width and Height") to preserve wrapping.</div>
+<div class="tip">Decorative text that shouldn't be swapped — name it anything except Headline, Subhead, or CTA.</div>
+<div class="tip">Background colors come from the Actual frame's fill, not from a rectangle inside it.</div>
+<div class="tip">Fallback: if no page names match, the parser scans all frames by pixel size (±50px).</div>
+</div>
+
+</body></html>`;
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.onload = () => {
+      printWindow.print();
+    };
+  };
+
   return (
     <div className="max-w-5xl">
       <PageHeader
@@ -48,8 +181,12 @@ export default function FormatsPage() {
         description="Specifications and safe zones for Meta placements"
       />
 
-      <Tabs defaultValue={formats[0]?.id} className="w-full">
+      <Tabs defaultValue="figma-template" className="w-full">
         <TabsList className="mb-6">
+          <TabsTrigger value="figma-template" className="gap-1.5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 17.5A3.5 3.5 0 0 1 8.5 14H12v3.5A3.5 3.5 0 0 1 5 17.5z"/><path d="M12 14H8.5A3.5 3.5 0 0 1 12 7h0v7z"/><path d="M12 7H8.5A3.5 3.5 0 0 1 12 .5h0V7z"/><path d="M12 .5h3.5A3.5 3.5 0 0 1 12 7h0V.5z"/><circle cx="15.5" cy="10.5" r="3.5"/></svg>
+            Figma Template
+          </TabsTrigger>
           {formats.map((format) => (
             <TabsTrigger key={format.id} value={format.id}>
               {format.ratio} {format.name}
@@ -167,6 +304,294 @@ export default function FormatsPage() {
             </TabsContent>
           );
         })}
+        {/* Figma Template Tab */}
+        <TabsContent value="figma-template">
+          <div className="space-y-6">
+            {/* Intro */}
+            <Card className="border-border/40">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-xl font-semibold mb-2">Figma File Format for Creative Preview</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Follow this structure to prepare a Figma file that imports correctly into the Creative Preview editor.
+                      The parser auto-detects formats, text roles, and shared images across sizes.
+                    </p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={exportToPdf} className="shrink-0">
+                    Export PDF
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Figma Template Link */}
+            <Card className="border-indigo-500/30 bg-indigo-500/5">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-indigo-500/20 flex items-center justify-center text-lg shrink-0">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-400"><path d="M5 17.5A3.5 3.5 0 0 1 8.5 14H12v3.5A3.5 3.5 0 0 1 5 17.5z"/><path d="M12 14H8.5A3.5 3.5 0 0 1 12 7h0v7z"/><path d="M12 7H8.5A3.5 3.5 0 0 1 12 .5h0V7z"/><path d="M12 .5h3.5A3.5 3.5 0 0 1 12 7h0V.5z"/><circle cx="15.5" cy="10.5" r="3.5"/></svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-sm">Figma Template — FIZ-ADS1</div>
+                    <div className="text-xs text-muted-foreground">Duplicate to your project and use as a starting template</div>
+                  </div>
+                  <a
+                    href="https://www.figma.com/design/vvDS2E1m0KEan9ZcK9ngo8/FIZ-ADS1?t=OrqxhFMYMDPac0bX-1"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium transition-colors"
+                  >
+                    Open in Figma
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                  </a>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* File Structure */}
+            <Card className="border-border/40">
+              <CardContent className="p-6">
+                <h4 className="font-semibold mb-4">Required File Structure</h4>
+
+                {/* Layer tree */}
+                <div className="bg-muted/30 rounded-lg p-5 font-mono text-sm leading-relaxed border border-border/40">
+                  <div className="text-muted-foreground">{`# Figma File`}</div>
+                  <div className="mt-2">
+                    <span className="text-indigo-400">File</span> <span className="text-muted-foreground">&quot;My Ad Designs&quot;</span>
+                  </div>
+                  {[
+                    { page: "1080×1920", format: "9:16", size: "1080×1920" },
+                    { page: "1080x1350", format: "4:5", size: "1080×1350" },
+                    { page: "1080×1080", format: "1:1", size: "1080×1080" },
+                    { page: "1920×1080", format: "16:9", size: "1920×1080" },
+                  ].map((p, i) => (
+                    <div key={i} className={`${i === 0 ? "mt-3" : "mt-4"}`}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground/60 select-none">{i < 3 ? "├──" : "└──"}</span>
+                        <span className="text-amber-400">Page</span>
+                        <span className="text-foreground">&quot;{p.page}&quot;</span>
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">{p.format}</Badge>
+                      </div>
+                      <div className="ml-8">
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground/60 select-none">└──</span>
+                          <span className="text-emerald-400 font-bold">Frame</span>
+                          <span className="text-foreground">&quot;Actual&quot;</span>
+                          <span className="text-muted-foreground text-xs">({p.size})</span>
+                        </div>
+                        <div className="ml-8 space-y-0.5 mt-1">
+                          {[
+                            { type: "TEXT", name: "Headline", role: "headline", color: "text-blue-400" },
+                            { type: "TEXT", name: "Subhead", role: "subhead", color: "text-blue-400" },
+                            { type: "TEXT", name: "CTA", role: "cta", color: "text-blue-400" },
+                            { type: "IMAGE", name: "Picture", role: null, color: "text-purple-400" },
+                            { type: "IMAGE", name: "LOGO", role: null, color: "text-purple-400" },
+                            { type: "SHAPE", name: "Button BG", role: null, color: "text-orange-400" },
+                          ].map((node, j, arr) => (
+                            <div key={j} className="flex items-center gap-2">
+                              <span className="text-muted-foreground/60 select-none">{j < arr.length - 1 ? "├──" : "└──"}</span>
+                              <span className={node.color}>{node.type}</span>
+                              <span>&quot;{node.name}&quot;</span>
+                              {node.role && (
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{node.role}</Badge>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Page Naming */}
+              <Card className="border-border/40">
+                <CardContent className="p-6">
+                  <h4 className="font-semibold mb-4">Page Naming Convention</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Page names must contain a size or keyword. Case-insensitive.
+                  </p>
+                  <div className="space-y-2">
+                    {[
+                      { format: "9:16", keywords: ["1080x1920", "9:16", "story", "reels"], color: "bg-indigo-500/20 text-indigo-400" },
+                      { format: "4:5", keywords: ["1080x1350", "4:5", "feed"], color: "bg-purple-500/20 text-purple-400" },
+                      { format: "1:1", keywords: ["1080x1080", "1:1", "square"], color: "bg-emerald-500/20 text-emerald-400" },
+                      { format: "16:9", keywords: ["1920x1080", "16:9", "landscape"], color: "bg-amber-500/20 text-amber-400" },
+                    ].map((row) => (
+                      <div key={row.format} className="flex items-center gap-3 py-2 border-b border-border/30 last:border-0">
+                        <div className={`w-12 text-center text-xs font-bold rounded px-1.5 py-1 ${row.color}`}>
+                          {row.format}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {row.keywords.map((kw) => (
+                            <code key={kw} className="text-xs bg-muted px-1.5 py-0.5 rounded">{kw}</code>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* The "Actual" Frame */}
+              <Card className="border-border/40">
+                <CardContent className="p-6">
+                  <h4 className="font-semibold mb-4">The &quot;Actual&quot; Frame</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Inside each page, place a single top-level frame named <code className="bg-muted px-1.5 py-0.5 rounded text-emerald-400">Actual</code> (case-insensitive).
+                  </p>
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">1</div>
+                      <div>
+                        <div className="text-sm font-medium">Must be a Frame, Component, or Group</div>
+                        <div className="text-xs text-muted-foreground">Other types (sections, etc.) are skipped</div>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">2</div>
+                      <div>
+                        <div className="text-sm font-medium">Size within ±50px tolerance</div>
+                        <div className="text-xs text-muted-foreground">e.g. 1080×1920 for 9:16 (1030–1130 × 1870–1970)</div>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">3</div>
+                      <div>
+                        <div className="text-sm font-medium">Background color extracted from solid fill</div>
+                        <div className="text-xs text-muted-foreground">The first SOLID fill becomes the canvas background</div>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">4</div>
+                      <div>
+                        <div className="text-sm font-medium">All children become editable nodes</div>
+                        <div className="text-xs text-muted-foreground">TEXT, IMAGE, and SHAPE nodes are parsed recursively</div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Text Layer Roles */}
+              <Card className="border-border/40">
+                <CardContent className="p-6">
+                  <h4 className="font-semibold mb-4">Text Layer Roles</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Name TEXT layers exactly to auto-assign roles for copy substitution.
+                  </p>
+                  <div className="space-y-3">
+                    {[
+                      { name: "Headline", role: "headline", desc: "Main attention-grabbing text. Connected to headline library.", color: "text-blue-400" },
+                      { name: "Subhead", role: "subhead", desc: "Supporting message. Also accepts \"Subheadline\".", color: "text-cyan-400" },
+                      { name: "CTA", role: "cta", desc: "Call-to-action button text. Connected to CTA library.", color: "text-pink-400" },
+                    ].map((item) => (
+                      <div key={item.name} className="p-3 rounded-lg border border-border/30 bg-muted/20">
+                        <div className="flex items-center gap-2 mb-1">
+                          <code className={`text-sm font-bold ${item.color}`}>&quot;{item.name}&quot;</code>
+                          <Badge variant="secondary" className="text-[10px]">{item.role}</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{item.desc}</p>
+                      </div>
+                    ))}
+                    <div className="p-3 rounded-lg border border-border/30 bg-muted/20">
+                      <div className="flex items-center gap-2 mb-1">
+                        <code className="text-sm font-bold text-muted-foreground">&quot;Any other name&quot;</code>
+                        <Badge variant="outline" className="text-[10px]">no role</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Rendered as-is with original text. Not connected to copy library.</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Image & Shape Layers */}
+              <Card className="border-border/40">
+                <CardContent className="p-6">
+                  <h4 className="font-semibold mb-4">Image & Shape Layers</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    How visual elements are detected and rendered.
+                  </p>
+                  <div className="space-y-3">
+                    <div className="p-3 rounded-lg border border-border/30 bg-muted/20">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-[10px]">IMAGE</Badge>
+                        <span className="text-sm font-medium">Rectangle / Frame with image fill</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Exported as PNG at 2x. Editable with Gemini AI and Remove.bg in Preview.</p>
+                    </div>
+                    <div className="p-3 rounded-lg border border-border/30 bg-muted/20">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30 text-[10px]">SHAPE</Badge>
+                        <span className="text-sm font-medium">Vector, Ellipse, Line, Polygon, etc.</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Exported as PNG at 2x. Rendered as static overlay on canvas.</p>
+                    </div>
+                    <div className="p-3 rounded-lg border border-border/30 bg-muted/20">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge className="bg-indigo-500/20 text-indigo-400 border-indigo-500/30 text-[10px]">SHARED</Badge>
+                        <span className="text-sm font-medium">Same name across formats</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        IMAGE nodes with identical names (e.g. &quot;Picture&quot;) across pages become shared.
+                        Edit once in Preview — updates all formats.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Extracted Properties */}
+            <Card className="border-border/40">
+              <CardContent className="p-6">
+                <h4 className="font-semibold mb-4">Extracted Text Properties</h4>
+                <p className="text-sm text-muted-foreground mb-4">
+                  These Figma text properties are preserved when rendering on canvas:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    "fontSize", "fontFamily", "fontWeight", "fontStyle",
+                    "textAlign", "textAlignVertical", "lineHeight",
+                    "letterSpacing", "paragraphSpacing", "textCase",
+                    "textDecoration", "color", "opacity",
+                  ].map((prop) => (
+                    <code key={prop} className="text-xs bg-muted px-2 py-1 rounded border border-border/30">
+                      {prop}
+                    </code>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tips */}
+            <Card className="border-amber-500/30 bg-amber-500/5">
+              <CardContent className="p-6">
+                <h4 className="font-semibold text-amber-400 mb-3">Tips for Best Results</h4>
+                <div className="space-y-2.5 text-sm">
+                  {[
+                    "Use the same layer names across all format pages for consistent shared picture detection.",
+                    "Keep the \"Actual\" frame as a direct child of the page — nested sections may not be found.",
+                    "For multi-line text, set text auto-resize to \"Height\" (not \"Width and Height\") so wrapping is preserved.",
+                    "Decorative text that shouldn't be swapped from the library — name it anything except Headline, Subhead, or CTA.",
+                    "Background colors come from the Actual frame's fill, not from a background rectangle inside it.",
+                    "Fallback: if no page names match, the parser scans all frames by pixel dimensions (±50px tolerance).",
+                  ].map((tip, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 mt-1.5" />
+                      <span className="text-muted-foreground">{tip}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
   );
