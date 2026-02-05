@@ -41,6 +41,7 @@ interface FigmaNode {
   opacity?: number;
   shouldWrap?: boolean;
   imageUrl?: string;
+  locked?: boolean;
 }
 
 interface FigmaFrame {
@@ -159,7 +160,7 @@ export default function PreviewPage() {
     const imagesByName: Record<string, Record<string, FigmaNode>> = {};
 
     for (const [format, template] of loadedFormats) {
-      const imageNodes = template.nodes.filter((n) => n.nodeType === "IMAGE");
+      const imageNodes = template.nodes.filter((n) => n.nodeType === "IMAGE" && !n.locked);
       for (const node of imageNodes) {
         const name = node.nodeName.toLowerCase();
         if (!imagesByName[name]) imagesByName[name] = {};
@@ -185,7 +186,7 @@ export default function PreviewPage() {
     const textsByName: Record<string, { defaultValue: string; nodes: Record<string, FigmaNode> }> = {};
 
     for (const [format, template] of loadedFormats) {
-      const otherTextNodes = template.nodes.filter((n) => n.nodeType === "TEXT" && !n.role);
+      const otherTextNodes = template.nodes.filter((n) => n.nodeType === "TEXT" && !n.role && !n.locked);
       for (const node of otherTextNodes) {
         const name = node.nodeName.toLowerCase();
         if (!textsByName[name]) textsByName[name] = { defaultValue: node.defaultValue || "", nodes: {} };
@@ -387,8 +388,8 @@ export default function PreviewPage() {
       if (node.nodeType === "SHAPE" || node.nodeType === "IMAGE") {
         let imageUrl = node.imageUrl;
 
-        // Check if this IMAGE node has a generated replacement
-        if (node.nodeType === "IMAGE") {
+        // Check if this IMAGE node has a generated replacement (skip locked)
+        if (node.nodeType === "IMAGE" && !node.locked) {
           const genUrl = generatedImages[node.nodeName];
           if (genUrl) {
             imageUrl = genUrl;
@@ -405,10 +406,12 @@ export default function PreviewPage() {
         }
       } else if (node.nodeType === "TEXT") {
         let textValue = node.defaultValue || "";
-        if (node.role === "headline" && copy.headline) textValue = copy.headline;
-        else if (node.role === "subhead" && copy.subhead) textValue = copy.subhead;
-        else if (node.role === "cta" && copy.cta) textValue = copy.cta;
-        else if (!node.role && otherTexts[node.nodeName]) textValue = otherTexts[node.nodeName];
+        if (!node.locked) {
+          if (node.role === "headline" && copy.headline) textValue = copy.headline;
+          else if (node.role === "subhead" && copy.subhead) textValue = copy.subhead;
+          else if (node.role === "cta" && copy.cta) textValue = copy.cta;
+          else if (!node.role && otherTexts[node.nodeName]) textValue = otherTexts[node.nodeName];
+        }
 
         if (!textValue) continue;
 
@@ -829,7 +832,7 @@ export default function PreviewPage() {
 
       if (node.nodeType === "SHAPE" || node.nodeType === "IMAGE") {
         let imageUrl = node.imageUrl;
-        if (node.nodeType === "IMAGE") {
+        if (node.nodeType === "IMAGE" && !node.locked) {
           const genUrl = generatedImages[node.nodeName];
           if (genUrl) imageUrl = genUrl;
         }
@@ -841,10 +844,12 @@ export default function PreviewPage() {
         }
       } else if (node.nodeType === "TEXT") {
         let textValue = node.defaultValue || "";
-        if (node.role === "headline" && copy.headline) textValue = copy.headline;
-        else if (node.role === "subhead" && copy.subhead) textValue = copy.subhead;
-        else if (node.role === "cta" && copy.cta) textValue = copy.cta;
-        else if (!node.role && otherTexts[node.nodeName]) textValue = otherTexts[node.nodeName];
+        if (!node.locked) {
+          if (node.role === "headline" && copy.headline) textValue = copy.headline;
+          else if (node.role === "subhead" && copy.subhead) textValue = copy.subhead;
+          else if (node.role === "cta" && copy.cta) textValue = copy.cta;
+          else if (!node.role && otherTexts[node.nodeName]) textValue = otherTexts[node.nodeName];
+        }
         if (!textValue) continue;
 
         if (node.textCase === "UPPER") textValue = textValue.toUpperCase();

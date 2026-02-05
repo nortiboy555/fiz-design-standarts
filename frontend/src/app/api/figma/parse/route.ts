@@ -67,6 +67,7 @@ interface FigmaNode {
   id: string;
   name: string;
   type: string;
+  locked?: boolean;
   absoluteRenderBounds?: { x: number; y: number; width: number; height: number };
   absoluteBoundingBox?: { x: number; y: number; width: number; height: number };
   children?: FigmaNode[];
@@ -116,6 +117,7 @@ interface EditableNode {
   textAutoResize?: string;
   shouldWrap?: boolean;
   imageUrl?: string | null;
+  locked?: boolean;
 }
 
 function extractEditableNodes(
@@ -189,6 +191,7 @@ function extractEditableNodes(
         opacity,
         textAutoResize,
         shouldWrap,
+        locked: !!n.locked,
       });
       return;
     }
@@ -204,6 +207,7 @@ function extractEditableNodes(
         width: bounds.width,
         height: bounds.height,
         zIndex: zIndex++,
+        locked: !!n.locked,
       });
       return;
     }
@@ -220,6 +224,7 @@ function extractEditableNodes(
         width: bounds.width,
         height: bounds.height,
         zIndex: zIndex++,
+        locked: !!n.locked,
       });
       return;
     }
@@ -235,6 +240,7 @@ function extractEditableNodes(
         width: bounds.width,
         height: bounds.height,
         zIndex: zIndex++,
+        locked: !!n.locked,
       });
       return;
     }
@@ -252,6 +258,7 @@ function extractEditableNodes(
           width: bounds.width,
           height: bounds.height,
           zIndex: zIndex++,
+          locked: !!n.locked,
         });
         return;
       }
